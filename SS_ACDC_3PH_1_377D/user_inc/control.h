@@ -18,7 +18,7 @@
 void User_IRQhander(void);
 void User_Waveform_Generation(uint16_t Forward_dutycycle,
 uint16_t Backward_dutycycle,
-uint16_t Current_direction,
+float Current_direction,
 uint32_t Epwm_base_01and11,
 uint32_t Epwm_base_00ang10);
 void I_pid(void);
