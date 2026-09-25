@@ -111,7 +111,7 @@ void main(void)
         GPIO_writePin(24,0);
         GPIO_writePin(25,1);
         DEVICE_DELAY_US(1000000);
-
+        DEVICE_DELAY_US(1000000);
     }
     //this is a test for pushing to github.
 }
