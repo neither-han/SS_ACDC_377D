@@ -1,0 +1,35 @@
+# ========== 编译输出目录 ==========
+CPU1_RAM/
+CPU1_FLASH/
+Debug/
+Release/
+
+# ========== 预编译库输出（driverlib 的编译产物） ==========
+**/driverlib/ccs/Debug/
+**/driverlib/ccs/Release/
+
+# ========== 编译中间文件 ==========
+*.obj
+*.out
+*.map
+*.lst
+*.abs
+*.d
+*.opt
+*_linkInfo.xml
+
+# ========== IDE / 工具缓存 ==========
+.metadata/
+.config/
+.xdchelp/
+.launches/
+.cache/
+.theia/
+.codex/
+SETING.theia-workspace
+
+# ========== 系统文件 ==========
+Thumbs.db
+.DS_Store
+*.log
+*.tmp
