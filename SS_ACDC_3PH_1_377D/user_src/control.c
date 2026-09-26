@@ -42,11 +42,11 @@ GPIO_writePin(36,1);
     Uin_B=(Uin_BC-Uin_AB)/3.0f;
     Uin_C=(Uin_CA-Uin_BC)/3.0f;
   
-/*
-    Iin_A=ADC_DATA[]*44.0f-200.0f;
-    Iin_B=ADC_DATA[]*44.0f-200.0f;
-    Iin_C=ADC_DATA[]*44.0f-200.0f;
-    */
+
+    Iin_A=ADC_DATA[0]*0.02962f-59.4976f;
+    Iin_B=ADC_DATA[2]*0.02954f-59.2287f;
+    Iin_C=ADC_DATA[6]*0.02936f-59.3389f;
+    
     
       //更新SIN和COS
     Sin_Cos_Update();
@@ -76,9 +76,9 @@ GPIO_writePin(36,0);
     count_d++;
   if(count_d>=50)
   {
-    buffer_d[0][count_c]=Uin_d;
-    buffer_d[1][count_c]=Uin_q;
-    buffer_d[2][count_c]=inputU_angle;
+    buffer_d[0][count_c]=Iin_A;
+    buffer_d[1][count_c]=Iin_B;
+    buffer_d[2][count_c]=Iin_C;
     count_d=0;
     count_c++;
   }
