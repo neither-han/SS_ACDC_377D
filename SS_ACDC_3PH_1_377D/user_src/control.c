@@ -71,18 +71,21 @@ GPIO_writePin(36,1);
     User_Waveform_Generation(U_16bit,1000,-1,myEPWM7_BASE,myEPWM6_BASE);
     EPWM_setGlobalLoadOneShotLatch(myEPWM1_BASE);
 GPIO_writePin(36,0);
+
   if(count_c<30)
   {
     count_d++;
   if(count_d>=50)
-  {
-    buffer_d[0][count_c]=Iin_A;
-    buffer_d[1][count_c]=Iin_B;
-    buffer_d[2][count_c]=Iin_C;
+  { 
+    buffer_d[0][count_c]=Uin_q;
+    buffer_d[1][count_c]=Uin_d;
+    buffer_d[2][count_c]=inputU_angle;
+//    buffer_d[2][count_c]=Iin_C;
     count_d=0;
     count_c++;
   }
   }
+ 
 }
 void I_pid(void)//78Khz
 {

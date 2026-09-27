@@ -91,14 +91,14 @@ void init_PID_Parameter(void)//pid������ʼ��
   pid_InputI_Parameter.OUTPUT_LIMIT_DOWN=-40.0F;
   pid_InputI_Parameter.OUTPUT_LIMIT_UP=40.0F;
   
-  pid_UinPLL_Parameter.Kp_P=-0.000600000028f;
-	pid_UinPLL_Parameter.Kp_I=-0.00039999999f;
+  pid_UinPLL_Parameter.Kp_P=-0.02f;
+	pid_UinPLL_Parameter.Kp_I=-0.019f;
 	pid_UinPLL_Parameter.Kp_D=0;
 	pid_UinPLL_Parameter.T=1;//Ms
 	pid_UinPLL_Parameter.Td=2;
 	pid_UinPLL_Parameter.Ti=100;
-  pid_UinPLL_Parameter.ADD_LIMIT_DOWN=-0.001f;
-  pid_UinPLL_Parameter.ADD_LIMIT_UP=0.001f;
+  pid_UinPLL_Parameter.ADD_LIMIT_DOWN=-0.01f;
+  pid_UinPLL_Parameter.ADD_LIMIT_UP=0.01f;
   pid_UinPLL_Parameter.OUTPUT_LIMIT_DOWN=2.0f*M_PI*40.0f/25000.0f;//40hz//0.015707-<50hz
   pid_UinPLL_Parameter.OUTPUT_LIMIT_UP=2.0f*M_PI*60.0f/25000.0f;//60hz
 }
