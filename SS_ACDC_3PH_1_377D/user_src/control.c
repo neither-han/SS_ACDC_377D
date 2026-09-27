@@ -77,9 +77,9 @@ GPIO_writePin(36,0);
     count_d++;
   if(count_d>=50)
   { 
-    buffer_d[0][count_c]=Uin_q;
-    buffer_d[1][count_c]=Uin_d;
-    buffer_d[2][count_c]=inputU_angle;
+    buffer_d[0][count_c]=Uin_A;
+    buffer_d[1][count_c]=Uin_B;
+    buffer_d[2][count_c]=Uin_C;
 //    buffer_d[2][count_c]=Iin_C;
     count_d=0;
     count_c++;
@@ -146,6 +146,7 @@ uint32_t Epwm_base_01and11,
 uint32_t Epwm_base_00and10)
 {
     uint16_t ComValue_A_01and11,ComValue_B_01and11,ComValue_A_00and10,ComValue_B_00and10;
+    uint16_t ComValue_C_ADCTriger;
 //负电流，电流自电网流向电感
 //forword的下降沿与backword的下降沿对齐
     if(Current_direction<0){
@@ -157,6 +158,8 @@ uint32_t Epwm_base_00and10)
             ComValue_B_01and11=Backward_dutycycle;
             ComValue_A_00and10=Backward_dutycycle;
             ComValue_B_00and10=Backward_dutycycle+(Epwm_count_Period-Forward_dutycycle);
+            //count adc triger
+            ComValue_C_ADCTriger=(ComValue_A_00and10+ComValue_B_00and10)/2;
         }
         else {
             if(Forward_dutycycle>Backward_dutycycle-Epwm_count_DEADtime*2){
@@ -166,7 +169,8 @@ uint32_t Epwm_base_00and10)
             ComValue_B_01and11=Backward_dutycycle;
             ComValue_A_00and10=Backward_dutycycle;
             ComValue_B_00and10=Epwm_count_Free;
-            //ComValue_B_00and10=Epwm_count_Period;
+            //count adc triger
+            ComValue_C_ADCTriger=(ComValue_B_01and11+ComValue_A_01and11)/2;
         }
         //output set
         //Epwm_base_00and10 OUTPUT_A ——>10
@@ -186,11 +190,13 @@ uint32_t Epwm_base_00and10)
         if(Forward_dutycycle+Backward_dutycycle>Epwm_count_Period){
             if(Forward_dutycycle+Backward_dutycycle<Epwm_count_Period+Epwm_count_DEADtime*2){
                 Forward_dutycycle=Epwm_count_Period-Backward_dutycycle+Epwm_count_DEADtime*2;
-            }          
+            }        
             ComValue_A_01and11=Backward_dutycycle-(Epwm_count_Period-Forward_dutycycle);
             ComValue_B_01and11=Backward_dutycycle;
             ComValue_A_00and10=Backward_dutycycle;
             ComValue_B_00and10=Epwm_count_Free;
+            //count adc triger
+            ComValue_C_ADCTriger=(ComValue_B_01and11+ComValue_B_01and11)/2;
         }
         else{
             if(Forward_dutycycle>Epwm_count_Period-Backward_dutycycle-Epwm_count_DEADtime*2){
@@ -200,6 +206,8 @@ uint32_t Epwm_base_00and10)
             ComValue_B_01and11=Backward_dutycycle;
             ComValue_A_00and10=Backward_dutycycle;
             ComValue_B_00and10=Forward_dutycycle+Backward_dutycycle;
+            //count adc triger
+            ComValue_C_ADCTriger=(ComValue_A_00and10+ComValue_B_00and10)/2;
         }
         //output set
         //Epwm_base_00and10 OUTPUT_A ——>10
@@ -215,5 +223,7 @@ uint32_t Epwm_base_00and10)
     }
     EPWM_setCounterCompareValue(Epwm_base_01and11, EPWM_COUNTER_COMPARE_A, ComValue_A_01and11);
     EPWM_setCounterCompareValue(Epwm_base_01and11, EPWM_COUNTER_COMPARE_B, ComValue_B_01and11);
+    //set adc triger
+    EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_C, ComValue_C_ADCTriger);
 }
 
