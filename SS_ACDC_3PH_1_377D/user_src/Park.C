@@ -13,8 +13,8 @@ void Sin_Cos_Update(void)   //
 {
   inputU_SinCos[0]=sinf(inputU_angle);
   inputU_SinCos[1]=cosf(inputU_angle);
-  inputU_SinCos[2]=cosf(inputU_angle-2*M_PI/3);
-  inputU_SinCos[3]=cosf(inputU_angle-4*M_PI/3);
+//  inputU_SinCos[2]=cosf(inputU_angle-2*M_PI/3);
+//  inputU_SinCos[3]=cosf(inputU_angle-4*M_PI/3);
 }
 
 void SOGI_V(float Vin,float *v,float *vq)
@@ -39,7 +39,7 @@ void parkTest_TOW(float U,float V,float W,float *sincos,float *Xd,float *Xq)
 {
   float Xa,Xb;
   //UVW>ab;
-  Xa=(2.0F*U-V-W)/3.0F;
+  Xa=(2.0F*U-V-W)*0.3333333f;
   Xb=(V-W)*0.57735f;
   //ab>dq
   *Xd=Xa*sincos[1]+Xb*sincos[0];//0sin//1cos
@@ -54,8 +54,8 @@ void F_parkTest_TOW(float *U,float *V,float *W,float *sincos,float Xd,float Xq)
   Xb=Xd*sincos[0]+Xq*sincos[1];
   //ab>UVW
   *U=Xa;
-  *V=(-Xa+1.73205F*Xb)/2;
-  *W=(-Xa-1.73205F*Xb)/2;
+  *V=(-Xa+1.73205F*Xb)*0.5f;
+  *W=(-Xa-1.73205F*Xb)*0.5f;
 }
 void F_crakTest_TOW(float *Alpha,float *Beta,float *sincos,float Xd,float Xq)
 {

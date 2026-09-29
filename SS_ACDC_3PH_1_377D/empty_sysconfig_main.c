@@ -66,6 +66,12 @@ const void *adc1_DATA_dma=(const void *)pDMADest;
 
 volatile uint16_t pDMA[10]={1,1,1,1,1,1,1,1,1,1};
 const void *datafrom=(const void *)pDMA;
+
+extern float inputU_SinCos[4],inputU_angle;
+extern uint16_t  Grid_Current_PID_Mode,control_mode;
+
+void control_state_machine(viod);
+
 void main(void)
 {
     // Initializes device clock and peripherals
@@ -103,13 +109,10 @@ void main(void)
     init_PID_Parameter();
     init_PID_Data();
 
-EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
-EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
-EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
-EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
 
 	    while(1)
     {
+        //control_state_machine();
         GPIO_writePin(24,1);
         GPIO_writePin(25,0);
         DEVICE_DELAY_US(1000000);
@@ -135,6 +138,52 @@ __interrupt void INT_myEPWM1_ISR(void)
     Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP3);
 }
 
+void control_state_machine(viod)
+{
+    switch (control_mode) 
+        {
+            case 0:
+            {
+                EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                EPWM_setActionQualifierContSWForceAction(myEPWM3_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM3_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                EPWM_setActionQualifierContSWForceAction(myEPWM4_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM4_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+            }
+            case 1:
+            {
+                if((inputU_angle<0.505f*M_PI)&&(inputU_angle>0.495f*M_PI))
+                {
+                    EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM3_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM3_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM4_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM4_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    control_mode=2;
+                }
+            }
+            case 2:
+            {
+
+            }
+        
+        }
+    
+}
 //
 // End of File
 //

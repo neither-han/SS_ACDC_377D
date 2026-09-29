@@ -26,7 +26,6 @@ void pll_test(void)//
     Uin_sig=-1.0f;
   }
   */
-
   inputU_angle+=PID_calculate(Uin_sig,0,&pid_UinPLL_Data,&pid_UinPLL_Parameter,1);
   //inputU_angle+=2.0f*M_PI*50.0f/25000.0f;
   if(inputU_angle>2*M_PI)

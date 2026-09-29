@@ -14,6 +14,7 @@
 #define Epwm_count_Free     2100
 
 #define L_grid 290e-6
+#define M_PI_f32 3.14159f
 
 void User_IRQhander(void);
 void User_Waveform_Generation(uint16_t Forward_dutycycle,
