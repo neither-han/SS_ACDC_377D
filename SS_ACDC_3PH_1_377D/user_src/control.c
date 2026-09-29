@@ -77,8 +77,8 @@ GPIO_writePin(36,0);
     count_d++;
   if(count_d>=50)
   { 
-    buffer_d[0][count_c]=Uin_A;
-    buffer_d[1][count_c]=Uin_B;
+    buffer_d[0][count_c]=Uin_d;
+    buffer_d[1][count_c]=Uin_q;
     buffer_d[2][count_c]=Uin_C;
 //    buffer_d[2][count_c]=Iin_C;
     count_d=0;
