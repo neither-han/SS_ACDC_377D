@@ -9,7 +9,7 @@ extern PID_Parameter pid_UinPLL_Parameter;
 
 uint16_t ADC_DATA[10];
 float Uin_BC,Uin_AB,Uin_CA,Uin_A,Uin_B,Uin_C,Uin_d,Uin_q;
-float Iin_A,Iin_B,Iin_C,Iin_d,Iin_q,Iin_d_hope,Iin_q_hope;
+float Iin_A,Iin_B,Iin_C,Iin_d,Iin_q,Iin_d_hope=1.0f,Iin_q_hope=0;
 float PID_Forward_Dout,PID_Forward_Qout;
 float Vdd_forNormalization=600,Grid_Current_Forword_Gain=(M_PI*2.0f*50.0f*L_grid);
 float Forward_D_set,Forward_Q_set,Forward_Dset_normalization,Forward_Qset_normalization;
@@ -95,10 +95,9 @@ void I_pid(void)//78Khz
     }
     else 
     {
-        
+        Forward_D_set=0;
+        Forward_Q_set=0;
     }
-    Forward_D_set=500;
-    Forward_Q_set=0;
     //feedforward
     Forward_D_set=PID_Forward_Dout+Uin_d-Iin_q*Grid_Current_Forword_Gain;
     Forward_Q_set=PID_Forward_Qout+Uin_q+Iin_d*Grid_Current_Forword_Gain;
