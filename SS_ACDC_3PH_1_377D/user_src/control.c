@@ -11,7 +11,7 @@ uint16_t ADC_DATA[10];
 float Uin_BC,Uin_AB,Uin_CA,Uin_A,Uin_B,Uin_C,Uin_d,Uin_q;
 float Iin_A,Iin_B,Iin_C,Iin_d,Iin_q,Iin_d_hope,Iin_q_hope;
 float PID_Forward_Dout,PID_Forward_Qout;
-float Vdd_forNormalization=600;
+float Vdd_forNormalization=600,Grid_Current_Forword_Gain=(M_PI*2.0f*50.0f*L_grid);
 float Forward_D_set,Forward_Q_set,Forward_Dset_normalization,Forward_Qset_normalization;
 float U,V,W;
 uint16_t U_16bit,V_16bit,W_16bit;
@@ -24,7 +24,8 @@ uint16_t  Grid_Current_PID_Mode=0,control_mode=0;
 
 void User_IRQhander(void)
 {
-
+    GPIO_writePin(36,1);
+    //ADC get
     ADC_DATA[0] = ADC_readResult(myADC0_RESULT_BASE,myADC0_SOC2);//A2
     ADC_DATA[1] = ADC_readResult(myADC0_RESULT_BASE,myADC0_SOC3);//A3
     ADC_DATA[2] = ADC_readResult(myADC0_RESULT_BASE,myADC0_SOC4);//A4
@@ -44,34 +45,22 @@ void User_IRQhander(void)
     Uin_A=(Uin_AB-Uin_CA)*0.3333333f;
     Uin_B=(Uin_BC-Uin_AB)*0.3333333f;
     Uin_C=(Uin_CA-Uin_BC)*0.3333333f;
-  
- 
-    
-    
-      //更新SIN和COS
+    //更新SIN和COS
     Sin_Cos_Update();
-     
     //park
     parkTest_TOW(Uin_A,Uin_B,Uin_C,inputU_SinCos,&Uin_d,&Uin_q);
     parkTest_TOW(Iin_A,Iin_B,Iin_C,inputU_SinCos,&Iin_d,&Iin_q);
-
     //Uin pll
-
     pll_test();
-
     //current loop
-
     I_pid();
-
     //FP_park
-  
     F_parkTest_TOW(&U,&V,&W,inputU_SinCos,Forward_Dset_normalization,Forward_Qset_normalization);
  
     U_16bit=(uint16_t)((U+1.0f)*Epwm_count_Period*0.5f);
     V_16bit=(uint16_t)((V+1.0f)*Epwm_count_Period*0.5f);
     W_16bit=(uint16_t)((W+1.0f)*Epwm_count_Period*0.5f);
-
-    //PWM
+    //EPWM set
     /*User_Waveform_Generation(U_16bit,1000,V,myEPWM2_BASE,myEPWM1_BASE);
     User_Waveform_Generation(V_16bit,1000,W,myEPWM4_BASE,myEPWM3_BASE);
     User_Waveform_Generation(W_16bit,1000,U,myEPWM7_BASE,myEPWM6_BASE);*/
@@ -80,20 +69,19 @@ void User_IRQhander(void)
     User_Waveform_Generation(V_16bit,1000,-1,myEPWM4_BASE,myEPWM3_BASE);
     User_Waveform_Generation(W_16bit,1000,-1,myEPWM2_BASE,myEPWM1_BASE);
     EPWM_setGlobalLoadOneShotLatch(myEPWM1_BASE);
-
-  if(count_c<30)
-  {
-    count_d++;
-  if(count_d>=50)
-  { 
-    buffer_d[0][count_c]=Uin_d;
-    buffer_d[1][count_c]=Uin_q;
-    buffer_d[2][count_c]=inputU_angle;
-//    buffer_d[2][count_c]=Iin_C;
-    count_d=0;
-    count_c++;
-  }
-  }
+GPIO_writePin(36,0);
+    if(count_c<30)
+    {
+        count_d++;
+        if(count_d>=50)
+        { 
+            buffer_d[0][count_c]=Uin_d;
+            buffer_d[1][count_c]=Uin_q;
+            buffer_d[2][count_c]=inputU_angle;
+            count_d=0;
+            count_c++;
+        }
+    }
  
 }
 void I_pid(void)//78Khz
@@ -102,26 +90,18 @@ void I_pid(void)//78Khz
     if(1)
     {
     //PID
-      
         PID_Forward_Dout=PID_calculate(Iin_d,Iin_d_hope,&pid_InputId_Data,&pid_InputI_Parameter,Grid_Current_PID_Mode);
         PID_Forward_Qout=PID_calculate(Iin_q,Iin_q_hope,&pid_InputIq_Data,&pid_InputI_Parameter,Grid_Current_PID_Mode);
-     
     }
     else 
     {
         
     }
     Forward_D_set=500;
-        Forward_Q_set=0;
-        GPIO_writePin(36,1);
-         GPIO_writePin(36,1);
+    Forward_Q_set=0;
     //feedforward
-    Forward_D_set=PID_Forward_Dout+Uin_d-Iin_q*(M_PI*2.0f*50.0f*L_grid);
-    //Forward_Q_set=PID_Forward_Qout+Uin_q+Iin_d*(M_PI*2.0f*50.0f*L_grid);
-    //Forward_D_set=PID_Forward_Dout+Uin_d-Iin_q*0.09110618f;
-    //Forward_Q_set=PID_Forward_Qout+Uin_q+Iin_d*0.09110618f;
-    GPIO_writePin(36,0);
-    GPIO_writePin(36,0);
+    Forward_D_set=PID_Forward_Dout+Uin_d-Iin_q*Grid_Current_Forword_Gain;
+    Forward_Q_set=PID_Forward_Qout+Uin_q+Iin_d*Grid_Current_Forword_Gain;
     //normalization
     Forward_Dset_normalization=Forward_D_set/Vdd_forNormalization;
     Forward_Qset_normalization=Forward_Q_set/Vdd_forNormalization;
