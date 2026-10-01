@@ -18,8 +18,6 @@ const adc1           = adc.addInstance();
 const adc2           = adc.addInstance();
 const adc3           = adc.addInstance();
 const device_support = scripting.addModule("/driverlib/device_support.js");
-const dma            = scripting.addModule("/driverlib/dma.js", {}, false);
-const dma1           = dma.addInstance();
 const epwm           = scripting.addModule("/driverlib/epwm.js", {}, false);
 const epwm1          = epwm.addInstance();
 const epwm2          = epwm.addInstance();
@@ -86,22 +84,6 @@ multiplier4.multiplyValue = 20;
 
 const pinFunction3     = system.clockTree["XTAL"];
 pinFunction3.XTAL_Freq = 20;
-
-dma1.$name                = "myDMA0";
-dma1.emulationMode        = "DMA_EMULATION_FREE_RUN";
-dma1.startChannel         = true;
-dma1.srcBurstStep         = 1;
-dma1.srcAddressManual     = 0xB02;
-dma1.destAddressInputMode = "VARIABLE";
-dma1.destBurstStep        = 1;
-dma1.destAddressVariable  = "adc1_DATA_dma";
-dma1.srcAddressVariable   = "datafrom";
-dma1.srcAddressInputMode  = "VARIABLE";
-dma1.burstSize            = 4;
-dma1.srcTransferStep      = -4;
-dma1.destTransferStep     = -4;
-dma1.continuousModeConfig = "DMA_CFG_CONTINUOUS_ENABLE";
-dma1.triggerSource        = "DMA_TRIGGER_EPWM5SOCA";
 
 epwm1.epwmTimebase_counterMode                                     = "EPWM_COUNTER_MODE_UP";
 epwm1.epwmActionQualifier_EPWM_AQ_OUTPUT_A_shadowMode              = true;

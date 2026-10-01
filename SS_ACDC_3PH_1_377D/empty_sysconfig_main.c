@@ -57,21 +57,14 @@
 // User Included Files
 //
 #include "control.h"
-
+//
+// User variable and extern
+//
+extern float inputU_SinCos[4],inputU_angle;
+extern uint16_t  Grid_Current_PID_Mode,control_mode;
 //
 // Main
 //
-volatile uint16_t pDMADest[10];
-const void *adc1_DATA_dma=(const void *)pDMADest;
-
-volatile uint16_t pDMA[10]={1,1,1,1,1,1,1,1,1,1};
-const void *datafrom=(const void *)pDMA;
-
-extern float inputU_SinCos[4],inputU_angle;
-extern uint16_t  Grid_Current_PID_Mode,control_mode;
-
-void control_state_machine(viod);
-
 void main(void)
 {
     // Initializes device clock and peripherals
@@ -89,27 +82,28 @@ void main(void)
     // Initializes the PIE vector table with pointers to the shell Interrupt
     // Service Routines (ISR).
     //
-
-
     SysCtl_disablePeripheral(SYSCTL_PERIPH_CLK_TBCLKSYNC);
     Board_init();
     SysCtl_enablePeripheral(SYSCTL_PERIPH_CLK_TBCLKSYNC);
-//    Device_enableAllPeripherals();
-
+    //    Device_enableAllPeripherals();
     EPWM_clearEventTriggerInterruptFlag(myEPWM1_BASE);
-    //
     // Acknowledge this interrupt to receive more interrupts from group 3
-    //
     Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP3);
+
+    //user_init
+    ADC_calibration_init();
+    init_PID_Parameter();
+    init_PID_Data();
+    //ADC_calibration
+    control_mode=4;
+    //delay for hardware
+    DEVICE_DELAY_US(10000);
 
     EINT;  // Enable Global interrupt INTM
     ERTM;  // Enable Global realtime interrupt DBGM
     GPIO_writePin(23,1);
     GPIO_writePin(89,1);
-    init_PID_Parameter();
-    init_PID_Data();
-
-
+    
 	    while(1)
     {
         //control_state_machine();
@@ -138,52 +132,7 @@ __interrupt void INT_myEPWM1_ISR(void)
     Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP3);
 }
 
-void control_state_machine(viod)
-{
-    switch (control_mode) 
-        {
-            case 0:
-            {
-                EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
-                EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
-                EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
-                EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
-                EPWM_setActionQualifierContSWForceAction(myEPWM3_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
-                EPWM_setActionQualifierContSWForceAction(myEPWM3_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
-                EPWM_setActionQualifierContSWForceAction(myEPWM4_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
-                EPWM_setActionQualifierContSWForceAction(myEPWM4_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
-                EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
-                EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
-                EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
-                EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
-            }
-            case 1:
-            {
-                if((inputU_angle<0.505f*M_PI)&&(inputU_angle>0.495f*M_PI))
-                {
-                    EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
-                    EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
-                    EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
-                    EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
-                    EPWM_setActionQualifierContSWForceAction(myEPWM3_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
-                    EPWM_setActionQualifierContSWForceAction(myEPWM3_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
-                    EPWM_setActionQualifierContSWForceAction(myEPWM4_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
-                    EPWM_setActionQualifierContSWForceAction(myEPWM4_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
-                    EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
-                    EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
-                    EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
-                    EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
-                    control_mode=2;
-                }
-            }
-            case 2:
-            {
 
-            }
-        
-        }
-    
-}
 //
 // End of File
 //

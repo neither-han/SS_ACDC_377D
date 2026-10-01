@@ -8,10 +8,12 @@ extern PID_Data pid_UinPLL_Data;
 extern PID_Parameter pid_UinPLL_Parameter;
 
 uint16_t ADC_DATA[10];
+ADC_calibration_parameters ADC_parameter_1;
+
 float Uin_BC,Uin_AB,Uin_CA,Uin_A,Uin_B,Uin_C,Uin_d,Uin_q;
 float Iin_A,Iin_B,Iin_C,Iin_d,Iin_q,Iin_d_hope=1.0f,Iin_q_hope=0;
 float PID_Forward_Dout,PID_Forward_Qout;
-float Vdd_forNormalization=600,Grid_Current_Forword_Gain=(M_PI*2.0f*50.0f*L_grid);
+float Vdd_forNormalization=30,Grid_Current_Forword_Gain=(M_PI*2.0f*50.0f*L_grid);
 float Forward_D_set,Forward_Q_set,Forward_Dset_normalization,Forward_Qset_normalization;
 float U,V,W;
 uint16_t U_16bit,V_16bit,W_16bit;
@@ -35,12 +37,12 @@ void User_IRQhander(void)
     ADC_DATA[6] = ADC_readResult(myADC2_RESULT_BASE,myADC2_SOC0);//C2
     ADC_DATA[7] = ADC_readResult(myADC2_RESULT_BASE,myADC2_SOC1);//C3
 
-    Uin_CA=ADC_DATA[1]*0.276f-558.0f;//A3
-    Uin_AB=ADC_DATA[3]*0.276f-558.0f;//A5
-    Uin_BC=ADC_DATA[7]*0.276f-558.0f;//C3
-    Iin_A=ADC_DATA[0]*0.02962f-59.4976f;
-    Iin_B=ADC_DATA[2]*0.02954f-59.2287f;
-    Iin_C=ADC_DATA[6]*0.02936f-59.3389f;
+    Uin_CA=(ADC_DATA[1]-ADC_parameter_1.ADC_Calibration[1])*0.276f;//A3
+    Uin_AB=(ADC_DATA[3]-ADC_parameter_1.ADC_Calibration[3])*0.276f;//A5
+    Uin_BC=(ADC_DATA[7]-ADC_parameter_1.ADC_Calibration[7])*0.276f;//C3
+    Iin_A=-(ADC_DATA[0]-ADC_parameter_1.ADC_Calibration[0])*0.02962f;
+    Iin_B=-(ADC_DATA[2]-ADC_parameter_1.ADC_Calibration[2])*0.02954f;
+    Iin_C=-(ADC_DATA[6]-ADC_parameter_1.ADC_Calibration[6])*0.02936f;
  
     Uin_A=(Uin_AB-Uin_CA)*0.3333333f;
     Uin_B=(Uin_BC-Uin_AB)*0.3333333f;
@@ -69,15 +71,16 @@ void User_IRQhander(void)
     User_Waveform_Generation(V_16bit,1000,-1,myEPWM4_BASE,myEPWM3_BASE);
     User_Waveform_Generation(W_16bit,1000,-1,myEPWM2_BASE,myEPWM1_BASE);
     EPWM_setGlobalLoadOneShotLatch(myEPWM1_BASE);
+    control_state_machine();
 GPIO_writePin(36,0);
     if(count_c<30)
     {
         count_d++;
-        if(count_d>=50)
+        if(count_d>=20)
         { 
-            buffer_d[0][count_c]=Uin_d;
-            buffer_d[1][count_c]=Uin_q;
-            buffer_d[2][count_c]=inputU_angle;
+            buffer_d[0][count_c]=Uin_A;
+            buffer_d[1][count_c]=Uin_B;
+            buffer_d[2][count_c]=Uin_C;
             count_d=0;
             count_c++;
         }
@@ -86,8 +89,7 @@ GPIO_writePin(36,0);
 }
 void I_pid(void)//78Khz
 {
-    //if(Grid_Current_PID_Mode)
-    if(1)
+    if(Grid_Current_PID_Mode)
     {
     //PID
         PID_Forward_Dout=PID_calculate(Iin_d,Iin_d_hope,&pid_InputId_Data,&pid_InputI_Parameter,Grid_Current_PID_Mode);
@@ -101,6 +103,8 @@ void I_pid(void)//78Khz
     //feedforward
     Forward_D_set=PID_Forward_Dout+Uin_d-Iin_q*Grid_Current_Forword_Gain;
     Forward_Q_set=PID_Forward_Qout+Uin_q+Iin_d*Grid_Current_Forword_Gain;
+    Forward_D_set=20;
+    Forward_Q_set=0;
     //normalization
     Forward_Dset_normalization=Forward_D_set/Vdd_forNormalization;
     Forward_Qset_normalization=Forward_Q_set/Vdd_forNormalization;
@@ -222,5 +226,113 @@ uint32_t Epwm_base_00and10)
     EPWM_setCounterCompareValue(Epwm_base_01and11, EPWM_COUNTER_COMPARE_B, ComValue_B_01and11);
     //set adc triger
     EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_C, ComValue_C_ADCTriger);
+}
+void control_state_machine(void)
+{
+    switch (control_mode) 
+        {
+            case 0:
+            {
+                EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                EPWM_setActionQualifierContSWForceAction(myEPWM3_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM3_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                EPWM_setActionQualifierContSWForceAction(myEPWM4_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM4_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                control_mode=1;
+                break;
+            }
+            case 1:
+            {
+
+                break;
+            }
+            case 2:
+            {
+                if((inputU_angle<0.505f*M_PI)&&(inputU_angle>0.495f*M_PI))
+                {
+                    EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM3_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM3_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM4_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM4_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    control_mode=3;
+                }
+                break;
+            }
+            case 3:
+            {
+                
+                break;
+            }
+            case 4:
+            {
+                if(ADC_calibration_function(ADC_DATA,&ADC_parameter_1))
+                control_mode=0;
+            
+                break;
+            }
+            case 5:
+            {
+                
+                break;
+            }
+            default:
+            {
+                break;
+            }
+        
+        }
+    
+}
+uint16_t ADC_calibration_function(uint16_t* ADC_Data,ADC_calibration_parameters* parameters)
+{
+    static uint16_t ADC_Sum_Count=0;
+    uint16_t i;
+    if(ADC_Sum_Count<parameters->Sum_number)
+    {
+        ADC_Sum_Count++;
+        for(i=0;i<parameters->adc_number;i++)
+        {
+            parameters->ADC_Sum[i]+=ADC_DATA[i];
+        }
+        return 0;
+    }
+    else
+    {
+        for(i=0;i<parameters->adc_number;i++)
+        {
+            parameters->ADC_Calibration[i]=parameters->ADC_Sum[i]/1000;
+        }
+        for(i=0;i<parameters->adc_number;i++)
+        {
+            parameters->ADC_Sum[i]=0;
+        }
+        ADC_Sum_Count=0;
+         return 1;
+    }
+}
+void ADC_calibration_init(void)
+{
+    uint16_t i;
+    ADC_parameter_1.adc_number=8;
+    ADC_parameter_1.Sum_number=1000;
+    for(i=0;i<ADC_parameter_1.adc_number;i++)
+    {
+        ADC_parameter_1.ADC_Sum[i]=0;
+    }
 }
 
