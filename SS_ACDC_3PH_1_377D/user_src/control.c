@@ -1,27 +1,28 @@
 #include "control.h"
-
+//PID
 extern float inputU_SinCos[4],inputU_angle;
 extern PID_Data pid_InputId_Data;
 extern PID_Data pid_InputIq_Data;
 extern PID_Parameter pid_InputI_Parameter;
 extern PID_Data pid_UinPLL_Data;
 extern PID_Parameter pid_UinPLL_Parameter;
-
+//ADC_calibration
 uint16_t ADC_DATA[10];
 ADC_calibration_parameters ADC_parameter_1;
-
+//grid current control loop
 float Uin_BC,Uin_AB,Uin_CA,Uin_A,Uin_B,Uin_C,Uin_d,Uin_q;
 float Iin_A,Iin_B,Iin_C,Iin_d,Iin_q,Iin_d_hope=1.0f,Iin_q_hope=0;
 float PID_Forward_Dout,PID_Forward_Qout;
 float Vdd_forNormalization=30,Grid_Current_Forword_Gain=(M_PI*2.0f*50.0f*L_grid);
 float Forward_D_set,Forward_Q_set,Forward_Dset_normalization,Forward_Qset_normalization;
 float U,V,W;
+//epwm generate
 uint16_t U_16bit,V_16bit,W_16bit;
-
-
+int U_Current_num=0,V_Current_num=0,W_Current_num=0;
+//variable scope
 volatile float buffer_d[3][30];
 int count_d=0,count_c=0,fla=0;
-
+//work mode
 uint16_t  Grid_Current_PID_Mode=0,control_mode=0;
 
 void User_IRQhander(void)
@@ -67,9 +68,9 @@ void User_IRQhander(void)
     User_Waveform_Generation(V_16bit,1000,W,myEPWM4_BASE,myEPWM3_BASE);
     User_Waveform_Generation(W_16bit,1000,U,myEPWM7_BASE,myEPWM6_BASE);*/
   
-    User_Waveform_Generation(U_16bit,1000,-1,myEPWM7_BASE,myEPWM6_BASE);
-    User_Waveform_Generation(V_16bit,1000,-1,myEPWM4_BASE,myEPWM3_BASE);
-    User_Waveform_Generation(W_16bit,1000,-1,myEPWM2_BASE,myEPWM1_BASE);
+    User_Waveform_Generation(U_16bit,1000,Iin_A,&U_Current_num,myEPWM7_BASE,myEPWM6_BASE);
+    User_Waveform_Generation(V_16bit,1000,Iin_B,&V_Current_num,myEPWM4_BASE,myEPWM3_BASE);
+    User_Waveform_Generation(W_16bit,1000,Iin_C,&W_Current_num,myEPWM2_BASE,myEPWM1_BASE);
     EPWM_setGlobalLoadOneShotLatch(myEPWM1_BASE);
     control_state_machine();
 GPIO_writePin(36,0);
@@ -78,9 +79,9 @@ GPIO_writePin(36,0);
         count_d++;
         if(count_d>=20)
         { 
-            buffer_d[0][count_c]=Uin_A;
-            buffer_d[1][count_c]=Uin_B;
-            buffer_d[2][count_c]=Uin_C;
+            buffer_d[0][count_c]=Iin_A;
+            buffer_d[1][count_c]=(float)U_Current_num;
+            buffer_d[2][count_c]=Uin_A;
             count_d=0;
             count_c++;
         }
@@ -94,6 +95,9 @@ void I_pid(void)//78Khz
     //PID
         PID_Forward_Dout=PID_calculate(Iin_d,Iin_d_hope,&pid_InputId_Data,&pid_InputI_Parameter,Grid_Current_PID_Mode);
         PID_Forward_Qout=PID_calculate(Iin_q,Iin_q_hope,&pid_InputIq_Data,&pid_InputI_Parameter,Grid_Current_PID_Mode);
+       
+        //Forward_D_set=PID_Forward_Dout-Iin_q*Grid_Current_Forword_Gain;
+        //Forward_Q_set=PID_Forward_Qout+Iin_d*Grid_Current_Forword_Gain;
     }
     else 
     {
@@ -103,8 +107,6 @@ void I_pid(void)//78Khz
     //feedforward
     Forward_D_set=PID_Forward_Dout+Uin_d-Iin_q*Grid_Current_Forword_Gain;
     Forward_Q_set=PID_Forward_Qout+Uin_q+Iin_d*Grid_Current_Forword_Gain;
-    Forward_D_set=20;
-    Forward_Q_set=0;
     //normalization
     Forward_Dset_normalization=Forward_D_set/Vdd_forNormalization;
     Forward_Qset_normalization=Forward_Q_set/Vdd_forNormalization;
@@ -143,14 +145,43 @@ b->Backward
 void User_Waveform_Generation(uint16_t Forward_dutycycle,
 uint16_t Backward_dutycycle,
 float Current_direction,
+int* current_num,
 uint32_t Epwm_base_01and11,
 uint32_t Epwm_base_00and10)
 {
+    uint16_t epwm_mode;
     uint16_t ComValue_A_01and11,ComValue_B_01and11,ComValue_A_00and10,ComValue_B_00and10;
     uint16_t ComValue_C_ADCTriger;
-//负电流，电流自电网流向电感
-//forword的下降沿与backword的下降沿对齐
-    if(Current_direction<0){
+    //dead time
+    if((*current_num)<0)
+    {
+        epwm_mode=0;
+        if((*current_num)>-100)
+        {
+            (*current_num)--;
+        }
+        else
+        {
+            if(Current_direction>0)
+                (*current_num)=1;
+        }
+    }
+    else
+    {
+        epwm_mode=1;
+        if((*current_num)<100)
+        {
+            (*current_num)++;
+        } 
+        else
+        {
+            if(Current_direction<0)
+                (*current_num)=-1;
+        }
+    }
+    //负电流，电流自电网流向电感
+    //forword的下降沿与backword的下降沿对齐
+    if(epwm_mode==0){
         if(Forward_dutycycle>Backward_dutycycle){
             if(Forward_dutycycle<Backward_dutycycle+Epwm_count_DEADtime*2){
                 Forward_dutycycle=Backward_dutycycle+Epwm_count_DEADtime*2;
@@ -183,7 +214,7 @@ uint32_t Epwm_base_00and10)
         EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
         //Epwm_base_01and11 OUTPUT_B ——>01
         EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
-        EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
+        EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
     }
 //正电流，电流自电感流向电网
 //forword的上升沿与backword的下降沿对齐
@@ -246,6 +277,7 @@ void control_state_machine(void)
                 EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
                 EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
                 control_mode=1;
+                Grid_Current_PID_Mode=0;
                 break;
             }
             case 1:
@@ -270,6 +302,7 @@ void control_state_machine(void)
                     EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
                     EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
                     control_mode=3;
+                    Grid_Current_PID_Mode=1;
                 }
                 break;
             }

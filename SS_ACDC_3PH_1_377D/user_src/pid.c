@@ -80,7 +80,8 @@ void init_PID_Data(void)//pid���ݳ�ʼ��
 
 void init_PID_Parameter(void)//pid������ʼ��
 {
-  pid_InputI_Parameter.Kp_P=0.4f;	pid_InputI_Parameter.Kp_I=0.0010000009f;
+  pid_InputI_Parameter.Kp_P=0.4f;
+  pid_InputI_Parameter.Kp_I=0.0010000009f;
 	pid_InputI_Parameter.Kp_D=0;
 	pid_InputI_Parameter.T=1;//s
 	pid_InputI_Parameter.Td=0;
