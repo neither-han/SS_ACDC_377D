@@ -6,6 +6,8 @@ extern PID_Data pid_InputIq_Data;
 extern PID_Parameter pid_InputI_Parameter;
 extern PID_Data pid_UinPLL_Data;
 extern PID_Parameter pid_UinPLL_Parameter;
+extern PID_Data pid_MiddleU_Data;
+extern PID_Parameter pid_MiddleU_Parameter;
 //ADC_calibration
 uint16_t ADC_DATA[10];
 ADC_calibration_parameters ADC_parameter_1;
@@ -24,7 +26,8 @@ volatile float buffer_d[3][30];
 int count_d=0,count_c=0,fla=0;
 //work mode
 uint16_t  Grid_Current_PID_Mode=0,control_mode=0;
-
+//
+float U_middle,U_middle_hope=60.0f;
 void User_IRQhander(void)
 {
     GPIO_writePin(36,1);
@@ -44,6 +47,7 @@ void User_IRQhander(void)
     Iin_A=-(ADC_DATA[0]-ADC_parameter_1.ADC_Calibration[0])*0.02962f;
     Iin_B=-(ADC_DATA[2]-ADC_parameter_1.ADC_Calibration[2])*0.02954f;
     Iin_C=-(ADC_DATA[6]-ADC_parameter_1.ADC_Calibration[6])*0.02936f;
+    U_middle=(ADC_DATA[4]-ADC_parameter_1.ADC_Calibration[4])*0.3023f;
  
     Uin_A=(Uin_AB-Uin_CA)*0.3333333f;
     Uin_B=(Uin_BC-Uin_AB)*0.3333333f;
@@ -55,6 +59,8 @@ void User_IRQhander(void)
     parkTest_TOW(Iin_A,Iin_B,Iin_C,inputU_SinCos,&Iin_d,&Iin_q);
     //Uin pll
     pll_test();
+    //middle voltage loop
+    Iin_d_hope=PID_calculate(U_middle,U_middle_hope,&pid_MiddleU_Data,&pid_MiddleU_Parameter,Grid_Current_PID_Mode);
     //current loop
     I_pid();
     //FP_park
@@ -80,8 +86,8 @@ GPIO_writePin(36,0);
         if(count_d>=20)
         { 
             buffer_d[0][count_c]=Iin_A;
-            buffer_d[1][count_c]=(float)U_Current_num;
-            buffer_d[2][count_c]=Uin_A;
+            buffer_d[1][count_c]=Iin_B;
+            buffer_d[2][count_c]=Iin_C;
             count_d=0;
             count_c++;
         }
