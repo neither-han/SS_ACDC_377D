@@ -7,12 +7,14 @@ PAGE 0 :
    BEGIN            : origin = 0x000000, length = 0x000002
    RAMM0            : origin = 0x000123, length = 0x0002DD
    RAMD0            : origin = 0x00B000, length = 0x000800
-   RAMLS0           : origin = 0x008000, length = 0x001000
+   RAMLS0           : origin = 0x008000, length = 0x000800
+   RAMLS1           : origin = 0x008800, length = 0x000800
    RAMLS2           : origin = 0x009000, length = 0x000800
    RAMLS3           : origin = 0x009800, length = 0x000800
    RAMLS4           : origin = 0x00A000, length = 0x000800
    RESET            : origin = 0x3FFFC0, length = 0x000002
-
+//user add
+   RAMGS6      : origin = 0x012000, length = 0x002000
 
   /* Flash sectors */
    FLASHA           : origin = 0x080002, length = 0x001FFE	/* on-chip Flash */
@@ -47,8 +49,10 @@ PAGE 1 :
    RAMGS3      : origin = 0x00F000, length = 0x001000
    RAMGS4      : origin = 0x010000, length = 0x001000
    RAMGS5      : origin = 0x011000, length = 0x001000
+/*   user change ，move to page0
    RAMGS6      : origin = 0x012000, length = 0x001000
    RAMGS7      : origin = 0x013000, length = 0x001000
+*/
    RAMGS8      : origin = 0x014000, length = 0x001000
    RAMGS9      : origin = 0x015000, length = 0x001000
    RAMGS10     : origin = 0x016000, length = 0x001000
@@ -77,8 +81,8 @@ PAGE 1 :
 SECTIONS
 {
    codestart        : > BEGIN,     PAGE = 0
+   .text            : >> RAMD0 |  RAMLS0 | RAMLS1 | RAMLS2 | RAMLS3 | RAMLS4 | RAMGS6,   PAGE = 0
 //   .text            : >> RAMD0 |  RAMLS0 | RAMLS1 | RAMLS2 | RAMLS3 | RAMLS4,   PAGE = 0
-   .text            : >> RAMD0 |  RAMLS0 | RAMLS2 | RAMLS3 | RAMLS4,   PAGE = 0
    .cinit           : > RAMM0,     PAGE = 0
    .switch          : > RAMM0,     PAGE = 0
    .reset           : > RESET,     PAGE = 0, TYPE = DSECT /* not used, */
