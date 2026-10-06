@@ -29,10 +29,12 @@ void User_IRQhander(void);
 
 void User_Waveform_Generation(uint16_t Forward_dutycycle,
 uint16_t Backward_dutycycle,
+uint16_t IsolatedSide_phase,
 float Current_direction,
 int* current_num,
 uint32_t Epwm_base_01and11,
-uint32_t Epwm_base_00ang10);
+uint32_t Epwm_base_00and10,
+uint32_t Epwm_base_IsolatedSide);
 
 void I_pid(void);
 

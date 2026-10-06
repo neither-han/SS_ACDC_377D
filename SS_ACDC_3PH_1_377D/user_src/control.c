@@ -18,6 +18,8 @@ float PID_Forward_Dout,PID_Forward_Qout;
 float Vdd_forNormalization=30,Grid_Current_Forword_Gain=(M_PI*2.0f*50.0f*L_grid);
 float Forward_D_set,Forward_Q_set,Forward_Dset_normalization,Forward_Qset_normalization;
 float U,V,W;
+//isolated side control loop
+uint16_t phase_cont=0;
 //epwm generate
 uint16_t U_16bit,V_16bit,W_16bit;
 int U_Current_num=0,V_Current_num=0,W_Current_num=0;
@@ -74,9 +76,9 @@ void User_IRQhander(void)
     User_Waveform_Generation(V_16bit,1000,W,myEPWM4_BASE,myEPWM3_BASE);
     User_Waveform_Generation(W_16bit,1000,U,myEPWM7_BASE,myEPWM6_BASE);*/
   
-    User_Waveform_Generation(U_16bit,1000,Iin_A,&U_Current_num,myEPWM7_BASE,myEPWM6_BASE);
-    User_Waveform_Generation(V_16bit,1000,Iin_B,&V_Current_num,myEPWM4_BASE,myEPWM3_BASE);
-    User_Waveform_Generation(W_16bit,1000,Iin_C,&W_Current_num,myEPWM2_BASE,myEPWM1_BASE);
+    User_Waveform_Generation(U_16bit,1000,phase_cont,Iin_A,&U_Current_num,myEPWM7_BASE,myEPWM6_BASE,myEPWM10_BASE);
+    User_Waveform_Generation(V_16bit,1000,phase_cont,Iin_B,&V_Current_num,myEPWM4_BASE,myEPWM3_BASE,myEPWM9_BASE);
+    User_Waveform_Generation(W_16bit,1000,phase_cont,Iin_C,&W_Current_num,myEPWM2_BASE,myEPWM1_BASE,myEPWM8_BASE);
     EPWM_setGlobalLoadOneShotLatch(myEPWM1_BASE);
     control_state_machine();
 GPIO_writePin(36,0);
@@ -150,13 +152,16 @@ b->Backward
 */
 void User_Waveform_Generation(uint16_t Forward_dutycycle,
 uint16_t Backward_dutycycle,
+uint16_t IsolatedSide_phase,
 float Current_direction,
 int* current_num,
 uint32_t Epwm_base_01and11,
-uint32_t Epwm_base_00and10)
+uint32_t Epwm_base_00and10,
+uint32_t Epwm_base_IsolatedSide)
 {
     uint16_t epwm_mode;
     uint16_t ComValue_A_01and11,ComValue_B_01and11,ComValue_A_00and10,ComValue_B_00and10;
+    uint16_t ComValue_A_IsolatedSide,ComValue_B_IsolatedSide;
     uint16_t ComValue_C_ADCTriger;
     //dead time
     if((*current_num)<0)
@@ -184,6 +189,12 @@ uint32_t Epwm_base_00and10)
             if(Current_direction<0)
                 (*current_num)=-1;
         }
+    }
+    //隔离侧，后级，移相角设置
+    ComValue_A_IsolatedSide=IsolatedSide_phase;
+    ComValue_B_IsolatedSide=Epwm_count_Period/2+IsolatedSide_phase;
+    if (ComValue_B_IsolatedSide>Epwm_count_Period) {
+        ComValue_B_IsolatedSide-=Epwm_count_Period;
     }
     //负电流，电流自电网流向电感
     //forword的下降沿与backword的下降沿对齐
@@ -261,6 +272,9 @@ uint32_t Epwm_base_00and10)
     }
     EPWM_setCounterCompareValue(Epwm_base_01and11, EPWM_COUNTER_COMPARE_A, ComValue_A_01and11);
     EPWM_setCounterCompareValue(Epwm_base_01and11, EPWM_COUNTER_COMPARE_B, ComValue_B_01and11);
+    //set Isolated Side phase
+    EPWM_setCounterCompareValue(Epwm_base_IsolatedSide, EPWM_COUNTER_COMPARE_A, ComValue_A_IsolatedSide);
+    EPWM_setCounterCompareValue(Epwm_base_IsolatedSide, EPWM_COUNTER_COMPARE_B, ComValue_B_IsolatedSide);
     //set adc triger
     EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_C, ComValue_C_ADCTriger);
 }
@@ -282,6 +296,12 @@ void control_state_machine(void)
                 EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
                 EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
                 EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                EPWM_setActionQualifierContSWForceAction(myEPWM8_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM8_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                EPWM_setActionQualifierContSWForceAction(myEPWM9_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM9_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
+                EPWM_setActionQualifierContSWForceAction(myEPWM10_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
+                EPWM_setActionQualifierContSWForceAction(myEPWM10_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
                 control_mode=1;
                 Grid_Current_PID_Mode=0;
                 break;
@@ -307,6 +327,12 @@ void control_state_machine(void)
                     EPWM_setActionQualifierContSWForceAction(myEPWM6_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
                     EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
                     EPWM_setActionQualifierContSWForceAction(myEPWM7_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM8_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM8_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM9_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM9_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM10_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
+                    EPWM_setActionQualifierContSWForceAction(myEPWM10_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
                     control_mode=3;
                     Grid_Current_PID_Mode=1;
                 }
@@ -326,7 +352,10 @@ void control_state_machine(void)
             }
             case 5:
             {
-                
+                phase_cont++;
+                if (phase_cont>=Epwm_count_Period) {
+                phase_cont=0;
+                }
                 break;
             }
             default:
