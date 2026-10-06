@@ -19,7 +19,7 @@ float Vdd_forNormalization=30,Grid_Current_Forword_Gain=(M_PI*2.0f*50.0f*L_grid)
 float Forward_D_set,Forward_Q_set,Forward_Dset_normalization,Forward_Qset_normalization;
 float U,V,W;
 //isolated side control loop
-uint16_t phase_cont=0;
+float phase_cont=0;
 //epwm generate
 uint16_t U_16bit,V_16bit,W_16bit;
 int U_Current_num=0,V_Current_num=0,W_Current_num=0;
@@ -76,9 +76,9 @@ void User_IRQhander(void)
     User_Waveform_Generation(V_16bit,1000,W,myEPWM4_BASE,myEPWM3_BASE);
     User_Waveform_Generation(W_16bit,1000,U,myEPWM7_BASE,myEPWM6_BASE);*/
   
-    User_Waveform_Generation(U_16bit,1000,phase_cont,Iin_A,&U_Current_num,myEPWM7_BASE,myEPWM6_BASE,myEPWM10_BASE);
-    User_Waveform_Generation(V_16bit,1000,phase_cont,Iin_B,&V_Current_num,myEPWM4_BASE,myEPWM3_BASE,myEPWM9_BASE);
-    User_Waveform_Generation(W_16bit,1000,phase_cont,Iin_C,&W_Current_num,myEPWM2_BASE,myEPWM1_BASE,myEPWM8_BASE);
+    User_Waveform_Generation(U_16bit,1000,((uint16_t)phase_cont),Iin_A,&U_Current_num,myEPWM7_BASE,myEPWM6_BASE,myEPWM10_BASE);
+    User_Waveform_Generation(V_16bit,1000,((uint16_t)phase_cont),Iin_B,&V_Current_num,myEPWM4_BASE,myEPWM3_BASE,myEPWM9_BASE);
+    User_Waveform_Generation(W_16bit,1000,((uint16_t)phase_cont),Iin_C,&W_Current_num,myEPWM2_BASE,myEPWM1_BASE,myEPWM8_BASE);
     EPWM_setGlobalLoadOneShotLatch(myEPWM1_BASE);
     control_state_machine();
 GPIO_writePin(36,0);
@@ -352,7 +352,7 @@ void control_state_machine(void)
             }
             case 5:
             {
-                phase_cont++;
+                phase_cont+=0.01f;
                 if (phase_cont>=Epwm_count_Period) {
                 phase_cont=0;
                 }
