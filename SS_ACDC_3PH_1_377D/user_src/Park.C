@@ -69,3 +69,32 @@ void crakTest_TOW(float Alpha,float Beta,float *sincos,float *Xd,float *Xq)
   *Xd=Alpha*sincos[1]+Beta*sincos[0];
   *Xq=-Alpha*sincos[0]+Beta*sincos[1];
 }
+
+void SPWM_to_SVPWM(float* U,float* V,float* W)
+{
+  float Max,Min,Zero;
+  if(*U>=*V)
+  {
+    Max=*U;
+    Min=*V;
+  }
+  else
+  {
+    Max=*V;
+    Min=*U;
+  }
+  if(Max<*W)
+  {
+    Max=*W;
+  }
+  else
+  {
+    if(*W<Min)
+      Min=*W;
+  }
+  Zero=(Min+Max)*0.5f;
+  *U=*U-Zero;
+  *V=*V-Zero;
+  *W=*W-Zero;
+}
+

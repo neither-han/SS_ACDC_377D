@@ -103,10 +103,6 @@ void I_pid(void)//78Khz
     //PID
         PID_Forward_Dout=PID_calculate(Iin_d,Iin_d_hope,&pid_InputId_Data,&pid_InputI_Parameter,Grid_Current_PID_Mode);
         PID_Forward_Qout=PID_calculate(Iin_q,Iin_q_hope,&pid_InputIq_Data,&pid_InputI_Parameter,Grid_Current_PID_Mode);
-        //PID_Forward_Dout=PID_calculate(Iin_d,Iin_d_hope,&pid_InputId_Data,&pid_InputI_Parameter,0);
-        //PID_Forward_Qout=PID_calculate(Iin_q,Iin_q_hope,&pid_InputIq_Data,&pid_InputI_Parameter,0);
-        //Forward_D_set=PID_Forward_Dout-Iin_q*Grid_Current_Forword_Gain;
-        //Forward_Q_set=PID_Forward_Qout+Iin_d*Grid_Current_Forword_Gain;
     }
     else 
     {
@@ -116,9 +112,10 @@ void I_pid(void)//78Khz
     //feedforward
     Forward_D_set=PID_Forward_Dout+Uin_d-Iin_q*Grid_Current_Forword_Gain;
     Forward_Q_set=PID_Forward_Qout+Uin_q+Iin_d*Grid_Current_Forword_Gain;
-    //normalization
-    Forward_Dset_normalization=Forward_D_set/Vdd_forNormalization;
-    Forward_Qset_normalization=Forward_Q_set/Vdd_forNormalization;
+    //normalization,0.88f->eliminate SVPWM gain
+    Vdd_forNormalization=U_middle*0.5f;
+    Forward_Dset_normalization=0.88f*Forward_D_set/Vdd_forNormalization;
+    Forward_Qset_normalization=0.88f*Forward_Q_set/Vdd_forNormalization;
     //limit
     Max_min(&Forward_Dset_normalization,0.97f);
     Max_min(&Forward_Qset_normalization,0.97f);
