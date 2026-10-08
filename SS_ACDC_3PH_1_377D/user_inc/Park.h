@@ -12,5 +12,6 @@ void F_crakTest_TOW(float *Alpha,float *Beta,float *sincos,float Xd,float Xq);
 void SOGI_V(float Vin,float *v,float *vq);
 void SOGI_I(float Iin,float *i,float *iq);
 void Sin_Cos_Update(void);
+void SPWM_to_SVPWM(float* U,float* V,float* W);
 #endif 
 

@@ -67,7 +67,8 @@ void User_IRQhander(void)
     I_pid();
     //FP_park
     F_parkTest_TOW(&U,&V,&W,inputU_SinCos,Forward_Dset_normalization,Forward_Qset_normalization);
- 
+    //SVPWM generate
+    SPWM_to_SVPWM(&U,&V,&W);
     U_16bit=(uint16_t)((U+1.0f)*Epwm_count_Period*0.5f);
     V_16bit=(uint16_t)((V+1.0f)*Epwm_count_Period*0.5f);
     W_16bit=(uint16_t)((W+1.0f)*Epwm_count_Period*0.5f);
@@ -87,9 +88,9 @@ GPIO_writePin(36,0);
         count_d++;
         if(count_d>=20)
         { 
-            buffer_d[0][count_c]=Iin_A;
-            buffer_d[1][count_c]=Iin_B;
-            buffer_d[2][count_c]=Iin_C;
+            buffer_d[0][count_c]=U;
+            buffer_d[1][count_c]=V;
+            buffer_d[2][count_c]=W;
             count_d=0;
             count_c++;
         }
@@ -113,7 +114,7 @@ void I_pid(void)//78Khz
     Forward_D_set=PID_Forward_Dout+Uin_d-Iin_q*Grid_Current_Forword_Gain;
     Forward_Q_set=PID_Forward_Qout+Uin_q+Iin_d*Grid_Current_Forword_Gain;
     //normalization,0.88f->eliminate SVPWM gain
-    Vdd_forNormalization=U_middle*0.5f;
+    Vdd_forNormalization=U_middle_hope*0.5f;
     Forward_Dset_normalization=0.88f*Forward_D_set/Vdd_forNormalization;
     Forward_Qset_normalization=0.88f*Forward_Q_set/Vdd_forNormalization;
     //limit
