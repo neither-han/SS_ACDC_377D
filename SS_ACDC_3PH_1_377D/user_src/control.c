@@ -19,7 +19,7 @@ float Vdd_forNormalization=30,Grid_Current_Forword_Gain=(M_PI*2.0f*50.0f*L_grid)
 float Forward_D_set,Forward_Q_set,Forward_Dset_normalization,Forward_Qset_normalization;
 float U,V,W;
 //isolated side control loop
-float phase_cont=0;
+float phase_cont=5;
 //epwm generate
 uint16_t U_16bit,V_16bit,W_16bit;
 int U_Current_num=0,V_Current_num=0,W_Current_num=0;
@@ -28,8 +28,8 @@ volatile float buffer_d[3][30];
 int count_d=0,count_c=0,fla=0;
 //work mode
 uint16_t  Grid_Current_PID_Mode=0,control_mode=0;
-//
-float U_middle,U_middle_hope=60.0f;
+//middle volage control loop
+float U_middle,U_middle_hope=81.0f;
 void User_IRQhander(void)
 {
     GPIO_writePin(36,1);
@@ -103,7 +103,8 @@ void I_pid(void)//78Khz
     //PID
         PID_Forward_Dout=PID_calculate(Iin_d,Iin_d_hope,&pid_InputId_Data,&pid_InputI_Parameter,Grid_Current_PID_Mode);
         PID_Forward_Qout=PID_calculate(Iin_q,Iin_q_hope,&pid_InputIq_Data,&pid_InputI_Parameter,Grid_Current_PID_Mode);
-       
+        //PID_Forward_Dout=PID_calculate(Iin_d,Iin_d_hope,&pid_InputId_Data,&pid_InputI_Parameter,0);
+        //PID_Forward_Qout=PID_calculate(Iin_q,Iin_q_hope,&pid_InputIq_Data,&pid_InputI_Parameter,0);
         //Forward_D_set=PID_Forward_Dout-Iin_q*Grid_Current_Forword_Gain;
         //Forward_Q_set=PID_Forward_Qout+Iin_d*Grid_Current_Forword_Gain;
     }
@@ -304,6 +305,7 @@ void control_state_machine(void)
                 EPWM_setActionQualifierContSWForceAction(myEPWM10_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
                 control_mode=1;
                 Grid_Current_PID_Mode=0;
+                phase_cont=0;
                 break;
             }
             case 1:
@@ -352,9 +354,10 @@ void control_state_machine(void)
             }
             case 5:
             {
-                phase_cont+=0.01f;
-                if (phase_cont>=Epwm_count_Period) {
-                phase_cont=0;
+                phase_cont+=0.001f;
+                if (phase_cont>=80) {
+                //phase_cont=0;
+                control_mode=3;
                 }
                 break;
             }
