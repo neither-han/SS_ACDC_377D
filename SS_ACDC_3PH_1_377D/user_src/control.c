@@ -29,7 +29,7 @@ int count_d=0,count_c=0,fla=0;
 //work mode
 uint16_t  Grid_Current_PID_Mode=0,control_mode=0;
 //middle volage control loop
-float U_middle,U_middle_hope=81.0f;
+float U_middle,U_middle_hope=60.0f;
 void User_IRQhander(void)
 {
     GPIO_writePin(36,1);
@@ -88,9 +88,9 @@ GPIO_writePin(36,0);
         count_d++;
         if(count_d>=20)
         { 
-            buffer_d[0][count_c]=U;
-            buffer_d[1][count_c]=V;
-            buffer_d[2][count_c]=W;
+            buffer_d[0][count_c]=Iin_A;
+            buffer_d[1][count_c]=Iin_B;
+            buffer_d[2][count_c]=Iin_C;
             count_d=0;
             count_c++;
         }
@@ -283,6 +283,8 @@ void control_state_machine(void)
         {
             case 0:
             {
+                init_PID_Data();
+                
                 EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);
                 EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_OUTPUT_HIGH);
                 EPWM_setActionQualifierContSWForceAction(myEPWM2_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_OUTPUT_LOW);

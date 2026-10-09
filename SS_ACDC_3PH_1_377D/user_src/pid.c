@@ -90,7 +90,7 @@ void init_PID_Data(void)//pid���ݳ�ʼ��
 
 void init_PID_Parameter(void)//pid������ʼ��
 {
-  pid_InputI_Parameter.Kp_P=0.4f;
+  pid_InputI_Parameter.Kp_P=0.2f;
   pid_InputI_Parameter.Kp_I=0.0010000009f;
 	pid_InputI_Parameter.Kp_D=0;
 	pid_InputI_Parameter.T=1;//s
@@ -112,7 +112,7 @@ void init_PID_Parameter(void)//pid������ʼ��
   pid_UinPLL_Parameter.OUTPUT_LIMIT_DOWN=2.0f*M_PI*40.0f/25000.0f;//40hz//0.015707-<50hz
   pid_UinPLL_Parameter.OUTPUT_LIMIT_UP=2.0f*M_PI*60.0f/25000.0f;//60hz
 
-  pid_MiddleU_Parameter.Kp_P=-0.04f;
+  pid_MiddleU_Parameter.Kp_P=-0.02f;
   pid_MiddleU_Parameter.Kp_I=-0.00010000009f;
 	pid_MiddleU_Parameter.Kp_D=0;
 	pid_MiddleU_Parameter.T=1;//s
