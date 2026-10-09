@@ -1,15 +1,18 @@
 #include "pid.h"
 
-
+//grid current loop
 PID_Data pid_InputId_Data;
 PID_Data pid_InputIq_Data;
 PID_Parameter pid_InputI_Parameter;
-
+//grid voltage PLL 
 PID_Data pid_UinPLL_Data;
 PID_Parameter pid_UinPLL_Parameter;
-
+//middle voltage loop
 PID_Data pid_MiddleU_Data;
 PID_Parameter pid_MiddleU_Parameter;
+//output voltage loop
+PID_Data pid_OutputU_Data;
+PID_Parameter pid_OutputU_Parameter;
 
 /*
 ���ܣ�����ʽPID
@@ -85,7 +88,14 @@ void init_PID_Data(void)//pid���ݳ�ʼ��
 	pid_MiddleU_Data.Ek_2=0;
 	pid_MiddleU_Data.Ek_1=0;
 	pid_MiddleU_Data.Ek=0;
-  pid_MiddleU_Data.OUT=0;//
+  pid_MiddleU_Data.OUT=0;
+  
+  pid_OutputU_Data.Sv=0;
+	pid_OutputU_Data.Pv=0;
+	pid_OutputU_Data.Ek_2=0;
+	pid_OutputU_Data.Ek_1=0;
+	pid_OutputU_Data.Ek=0;
+  pid_OutputU_Data.OUT=0;
 }
 
 void init_PID_Parameter(void)//pid������ʼ��
@@ -112,8 +122,8 @@ void init_PID_Parameter(void)//pid������ʼ��
   pid_UinPLL_Parameter.OUTPUT_LIMIT_DOWN=2.0f*M_PI*40.0f/25000.0f;//40hz//0.015707-<50hz
   pid_UinPLL_Parameter.OUTPUT_LIMIT_UP=2.0f*M_PI*60.0f/25000.0f;//60hz
 
-  pid_MiddleU_Parameter.Kp_P=-0.02f;
-  pid_MiddleU_Parameter.Kp_I=-0.00010000009f;
+  pid_MiddleU_Parameter.Kp_P=-0.01f;
+  pid_MiddleU_Parameter.Kp_I=-0.0001f;
 	pid_MiddleU_Parameter.Kp_D=0;
 	pid_MiddleU_Parameter.T=1;//s
 	pid_MiddleU_Parameter.Td=0;
@@ -122,4 +132,15 @@ void init_PID_Parameter(void)//pid������ʼ��
   pid_MiddleU_Parameter.ADD_LIMIT_UP=0.1f;
   pid_MiddleU_Parameter.OUTPUT_LIMIT_DOWN=-6.0F;
   pid_MiddleU_Parameter.OUTPUT_LIMIT_UP=6.0F;
+
+  pid_OutputU_Parameter.Kp_P=0.002f;
+  pid_OutputU_Parameter.Kp_I=0.00001f;
+	pid_OutputU_Parameter.Kp_D=0;
+	pid_OutputU_Parameter.T=1;//s
+	pid_OutputU_Parameter.Td=0;
+	pid_OutputU_Parameter.Ti=0;
+  pid_OutputU_Parameter.ADD_LIMIT_DOWN=-0.001f;
+  pid_OutputU_Parameter.ADD_LIMIT_UP=0.001f;
+  pid_OutputU_Parameter.OUTPUT_LIMIT_DOWN=0.005f;
+  pid_OutputU_Parameter.OUTPUT_LIMIT_UP=0.25f;
 }
