@@ -31,7 +31,7 @@ uint16_t  Grid_Current_PID_Mode=0,IsolatedSide_PID_Mode=0,control_mode=0;
 //middle volage control loop
 float U_middle,U_middle_hope=63.0f;
 //isolated side control loop
-float IsolatedSide_phase=1;
+float IsolatedSide_phase=0;
 float U_output,U_output_hope=47.0f;
 uint16_t Phase_16bit;
 
@@ -286,6 +286,16 @@ uint32_t Epwm_base_IsolatedSide)
     EPWM_setCounterCompareValue(Epwm_base_IsolatedSide, EPWM_COUNTER_COMPARE_B, ComValue_B_IsolatedSide);
     //set adc triger
     EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_C, ComValue_C_ADCTriger);
+}
+void work_piont_meansure(void)
+{
+    float a,b,k,z,mm,D;
+    b=2*U_output/Uin_d;
+    a=U_output/U_middle;
+    k=a*a-1;
+    z=a*b;
+    mm=sqrtf(4*k*k+z*z);
+    D=(z-2*k-mm)/(4*z);
 }
 void control_state_machine(void)
 {
