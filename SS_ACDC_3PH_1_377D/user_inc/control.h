@@ -40,6 +40,8 @@ void I_pid(void);
 
 void  Max_min(float *a,float b);
 
+float work_piont_meansure(float U_in_pp,float U_out,float U_m);
+
 void control_state_machine(void);
 
 uint16_t ADC_calibration_function(uint16_t* ADC_Data,ADC_calibration_parameters* parameters);
