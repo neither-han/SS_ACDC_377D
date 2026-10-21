@@ -18,6 +18,7 @@ ADC_calibration_parameters ADC_parameter_1;
 //grid current control loop
 float Uin_BC,Uin_AB,Uin_CA,Uin_A,Uin_B,Uin_C,Uin_d,Uin_q;
 float Iin_A,Iin_B,Iin_C,Iin_d,Iin_q,Iin_d_hope=1.0f,Iin_q_hope=0;
+float Grid_Input_Power;
 float PID_Forward_Dout,PID_Forward_Qout;
 float Vdd_forNormalization=30,Grid_Current_Forword_Gain=(M_PI*2.0f*50.0f*L_grid);
 float Forward_D_set,Forward_Q_set,Forward_Dset_normalization,Forward_Qset_normalization;
@@ -37,6 +38,9 @@ float IsolatedSide_phase=0;
 float U_output,U_output_hope=47.0f;
 uint16_t Phase_16bit;
 
+
+uint32_t bits_fortest;
+
 void User_IRQhander(void)
 {
     GPIO_writePin(36,1);
@@ -50,15 +54,15 @@ void User_IRQhander(void)
     ADC_DATA[6] = ADC_readResult(myADC2_RESULT_BASE,myADC2_SOC0);//C2
     ADC_DATA[7] = ADC_readResult(myADC2_RESULT_BASE,myADC2_SOC1);//C3
 
-    Uin_CA=(ADC_DATA[1]-ADC_parameter_1.ADC_Calibration[1])*0.276f;//A3
-    Uin_AB=(ADC_DATA[3]-ADC_parameter_1.ADC_Calibration[3])*0.276f;//A5
-    Uin_BC=(ADC_DATA[7]-ADC_parameter_1.ADC_Calibration[7])*0.276f;//C3
-    Iin_A=-(ADC_DATA[0]-ADC_parameter_1.ADC_Calibration[0])*0.02962f;
-    Iin_B=-(ADC_DATA[2]-ADC_parameter_1.ADC_Calibration[2])*0.02954f;
-    Iin_C=-(ADC_DATA[6]-ADC_parameter_1.ADC_Calibration[6])*0.02936f;
-    U_middle=(ADC_DATA[4]-ADC_parameter_1.ADC_Calibration[4])*0.3023f;
-    U_output=(ADC_DATA[5]-ADC_parameter_1.ADC_Calibration[5])*0.3023f;
- 
+    Uin_CA=((float)ADC_DATA[1]-(float)ADC_parameter_1.ADC_Calibration[1])*0.276f;//A3
+    Uin_AB=((float)ADC_DATA[3]-(float)ADC_parameter_1.ADC_Calibration[3])*0.276f;//A5
+    Uin_BC=((float)ADC_DATA[7]-(float)ADC_parameter_1.ADC_Calibration[7])*0.276f;//C3
+    Iin_A=-((float)ADC_DATA[0]-(float)ADC_parameter_1.ADC_Calibration[0])*0.02962f;
+    Iin_B=-((float)ADC_DATA[2]-(float)ADC_parameter_1.ADC_Calibration[2])*0.02954f;
+    Iin_C=-((float)ADC_DATA[6]-(float)ADC_parameter_1.ADC_Calibration[6])*0.02936f;
+    U_middle=((float)ADC_DATA[4]-(float)ADC_parameter_1.ADC_Calibration[4])*0.3023f;
+    U_output=((float)ADC_DATA[5]-(float)ADC_parameter_1.ADC_Calibration[5])*0.3023f;
+
     Uin_A=(Uin_AB-Uin_CA)*0.3333333f;
     Uin_B=(Uin_BC-Uin_AB)*0.3333333f;
     Uin_C=(Uin_CA-Uin_BC)*0.3333333f;
@@ -69,18 +73,29 @@ void User_IRQhander(void)
     parkTest_TOW(Iin_A,Iin_B,Iin_C,inputU_SinCos,&Iin_d,&Iin_q);
     //Uin pll
     pll_test();
+    //U_middle_hope set
+    
+    if(U_middle_hope<=2.96f*Uin_d){
+        U_middle_hope+=5.0f;
+    }
+    else {
+    if ((U_middle_hope>(3.45f*Uin_d))&&((U_middle_hope>5.0f))) {
+        U_middle_hope-=5.0f;
+    }
+    }
+
     //load mode
     if(LightLoad==1){
         //middle voltage loop
-        Iin_d_hope=PID_calculate(U_middle,U_middle_hope,&pid_MiddleU_Data,&pid_MiddleU_Parameter,Grid_Current_PID_Mode);
+        Grid_Input_Power=PID_calculate(U_middle,U_middle_hope,&pid_MiddleU_Data,&pid_MiddleU_Parameter,Grid_Current_PID_Mode);
         //output voltage loop,0.25->90degree
         IsolatedSide_phase=PID_calculate(U_output,U_output_hope,&pid_OutputU_1_Data,&pid_OutputU_1_Parameter,IsolatedSide_PID_Mode);
     }
     else {
         IsolatedSide_phase=work_piont_meansure(Uin_d,U_output,U_middle);
-        Iin_d_hope=PID_calculate(U_output,U_output_hope,&pid_OutputU_2_Data,&pid_OutputU_2_Parameter,IsolatedSide_PID_Mode);
+        Grid_Input_Power=PID_calculate(U_output,U_output_hope,&pid_OutputU_2_Data,&pid_OutputU_2_Parameter,IsolatedSide_PID_Mode);
     }
-   
+    Iin_d_hope=Grid_Input_Power/Uin_d;
     //current loop
     I_pid();
     //FP_park
@@ -90,6 +105,22 @@ void User_IRQhander(void)
     U_16bit=(uint16_t)((U+1.0f)*Epwm_count_Period*0.5f);
     V_16bit=(uint16_t)((V+1.0f)*Epwm_count_Period*0.5f);
     W_16bit=(uint16_t)((W+1.0f)*Epwm_count_Period*0.5f);
+    
+    if(U_output>3.0f)
+    {
+        bits_fortest=1;
+    }else {
+    if(U_output<-3.0f)
+    {
+        bits_fortest=1;
+    }
+    bits_fortest=0;
+    }
+    if(bits_fortest==1)
+    {
+        U_output=0.0f;
+    }
+    
     //Phase generate,90degree->500
     if(IsolatedSide_phase>=0){
         Phase_16bit=(uint16_t)(IsolatedSide_phase*Epwm_count_Period);
@@ -398,7 +429,7 @@ void control_state_machine(void)
             case 6:
             {
                 LightLoad=1;//lightmode
-                if(Iin_d_hope<-3)
+                if(Iin_d_hope<-4)
                 {
                     control_mode=7;
                     pid_OutputU_2_Data.Sv=0;
@@ -406,14 +437,14 @@ void control_state_machine(void)
                     pid_OutputU_2_Data.Ek_2=0;
                     pid_OutputU_2_Data.Ek_1=0;
                     pid_OutputU_2_Data.Ek=0;
-                    pid_OutputU_2_Data.OUT=Iin_d_hope;
+                    pid_OutputU_2_Data.OUT=Grid_Input_Power;
                 }
                 break;
             }
             case 7:
             {
                 LightLoad=0;//fullpower
-                if(Iin_d_hope>-4)
+                if(Iin_d_hope>-3)
                 {
                     control_mode=6;
                     pid_OutputU_1_Data.Sv=0;
@@ -428,7 +459,7 @@ void control_state_machine(void)
                     pid_MiddleU_Data.Ek_2=0;
                     pid_MiddleU_Data.Ek_1=0;
                     pid_MiddleU_Data.Ek=0;
-                    pid_MiddleU_Data.OUT=Iin_d_hope;
+                    pid_MiddleU_Data.OUT=Grid_Input_Power;
                 }
                 break;
             }

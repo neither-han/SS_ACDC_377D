@@ -109,6 +109,11 @@
                             </tool>
                         </toolChain>
                     </folderInfo>
+                    <fileInfo id="com.ti.ccstudio.buildDefinitions.C2000.Default.676233504.user_src/control.c" name="control.c" rcbsApplicability="disable" resourcePath="user_src/control.c" toolsToInvoke="com.ti.ccstudio.buildDefinitions.C2000_25.11.exe.compilerDebug.1590651530.314291822">
+                        <tool id="com.ti.ccstudio.buildDefinitions.C2000_25.11.exe.compilerDebug.1590651530.314291822" name="C2000 Compiler" superClass="com.ti.ccstudio.buildDefinitions.C2000_25.11.exe.compilerDebug.1590651530">
+                            <option id="com.ti.ccstudio.buildDefinitions.C2000_25.11.compilerID.OPT_LEVEL.1205460354" superClass="com.ti.ccstudio.buildDefinitions.C2000_25.11.compilerID.OPT_LEVEL" value="com.ti.ccstudio.buildDefinitions.C2000_25.11.compilerID.OPT_LEVEL.0" valueType="enumerated"/>
+                        </tool>
+                    </fileInfo>
                     <sourceEntries>
                         <entry excluding="2837xD_FLASH_lnk_cpu1.cmd|device|device/driverlib" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
                     </sourceEntries>
