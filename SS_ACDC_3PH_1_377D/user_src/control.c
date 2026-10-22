@@ -43,7 +43,7 @@ uint32_t bits_fortest;
 
 void User_IRQhander(void)
 {
-    GPIO_writePin(36,1);
+    //GPIO_writePin(36,1);
     //ADC get
     ADC_DATA[0] = ADC_readResult(myADC0_RESULT_BASE,myADC0_SOC2);//A2
     ADC_DATA[1] = ADC_readResult(myADC0_RESULT_BASE,myADC0_SOC3);//A3
@@ -54,9 +54,9 @@ void User_IRQhander(void)
     ADC_DATA[6] = ADC_readResult(myADC2_RESULT_BASE,myADC2_SOC0);//C2
     ADC_DATA[7] = ADC_readResult(myADC2_RESULT_BASE,myADC2_SOC1);//C3
 
-    Uin_CA=((float)ADC_DATA[1]-(float)ADC_parameter_1.ADC_Calibration[1])*0.276f;//A3
-    Uin_AB=((float)ADC_DATA[3]-(float)ADC_parameter_1.ADC_Calibration[3])*0.276f;//A5
-    Uin_BC=((float)ADC_DATA[7]-(float)ADC_parameter_1.ADC_Calibration[7])*0.276f;//C3
+    Uin_CA=((float)ADC_DATA[1]-(float)ADC_parameter_1.ADC_Calibration[1])*0.376f;//A3
+    Uin_AB=((float)ADC_DATA[3]-(float)ADC_parameter_1.ADC_Calibration[3])*0.376f;//A5
+    Uin_BC=((float)ADC_DATA[7]-(float)ADC_parameter_1.ADC_Calibration[7])*0.376f;//C3
     Iin_A=-((float)ADC_DATA[0]-(float)ADC_parameter_1.ADC_Calibration[0])*0.02962f;
     Iin_B=-((float)ADC_DATA[2]-(float)ADC_parameter_1.ADC_Calibration[2])*0.02954f;
     Iin_C=-((float)ADC_DATA[6]-(float)ADC_parameter_1.ADC_Calibration[6])*0.02936f;
@@ -75,11 +75,11 @@ void User_IRQhander(void)
     pll_test();
     //U_middle_hope set
     
-    if(U_middle_hope<=2.96f*Uin_d){
+    if(U_middle_hope<=2.1f*Uin_d){
         U_middle_hope+=5.0f;
     }
     else {
-    if ((U_middle_hope>(3.45f*Uin_d))&&((U_middle_hope>5.0f))) {
+    if ((U_middle_hope>(2.5f*Uin_d))&&((U_middle_hope>5.0f))) {
         U_middle_hope-=5.0f;
     }
     }
@@ -95,6 +95,7 @@ void User_IRQhander(void)
         IsolatedSide_phase=work_piont_meansure(Uin_d,U_output,U_middle);
         Grid_Input_Power=PID_calculate(U_output,U_output_hope,&pid_OutputU_2_Data,&pid_OutputU_2_Parameter,IsolatedSide_PID_Mode);
     }
+    //power to Id
     Iin_d_hope=Grid_Input_Power/Uin_d;
     //current loop
     I_pid();
@@ -106,21 +107,6 @@ void User_IRQhander(void)
     V_16bit=(uint16_t)((V+1.0f)*Epwm_count_Period*0.5f);
     W_16bit=(uint16_t)((W+1.0f)*Epwm_count_Period*0.5f);
     
-    if(U_output>3.0f)
-    {
-        bits_fortest=1;
-    }else {
-    if(U_output<-3.0f)
-    {
-        bits_fortest=1;
-    }
-    bits_fortest=0;
-    }
-    if(bits_fortest==1)
-    {
-        U_output=0.0f;
-    }
-    
     //Phase generate,90degree->500
     if(IsolatedSide_phase>=0){
         Phase_16bit=(uint16_t)(IsolatedSide_phase*Epwm_count_Period);
@@ -129,20 +115,22 @@ void User_IRQhander(void)
         Phase_16bit=(uint16_t)((1.0f-IsolatedSide_phase)*Epwm_count_Period);//产生不了负移相
     }
     //EPWM set
-    User_Waveform_Generation(U_16bit,1000,Phase_16bit,Iin_A,&U_Current_num,myEPWM7_BASE,myEPWM6_BASE,myEPWM10_BASE);
+    User_Waveform_Generation(U_16bit,1000,Phase_16bit,Iin_A,&U_Current_num,myEPWM2_BASE,myEPWM1_BASE,myEPWM10_BASE);
     User_Waveform_Generation(V_16bit,1000,Phase_16bit,Iin_B,&V_Current_num,myEPWM4_BASE,myEPWM3_BASE,myEPWM9_BASE);
-    User_Waveform_Generation(W_16bit,1000,Phase_16bit,Iin_C,&W_Current_num,myEPWM2_BASE,myEPWM1_BASE,myEPWM8_BASE);
+    User_Waveform_Generation(W_16bit,1000,Phase_16bit,Iin_C,&W_Current_num,myEPWM7_BASE,myEPWM6_BASE,myEPWM8_BASE);
     EPWM_setGlobalLoadOneShotLatch(myEPWM1_BASE);
     control_state_machine();
-GPIO_writePin(36,0);
+//GPIO_writePin(36,0);
+if(U_middle>170)
+count_c=0;
     if(count_c<30)
     {
         count_d++;
         if(count_d>=20)
         { 
-            buffer_d[0][count_c]=Iin_A;
-            buffer_d[1][count_c]=Iin_B;
-            buffer_d[2][count_c]=Iin_C;
+            buffer_d[0][count_c]=U_middle;
+            buffer_d[1][count_c]=Iin_d_hope;
+            buffer_d[2][count_c]=Iin_d;
             count_d=0;
             count_c++;
         }
@@ -164,6 +152,8 @@ void I_pid(void)//78Khz
     //feedforward
     Forward_D_set=PID_Forward_Dout+Uin_d-Iin_q*Grid_Current_Forword_Gain;
     Forward_Q_set=PID_Forward_Qout+Uin_q+Iin_d*Grid_Current_Forword_Gain;
+    //Forward_D_set=20.0f;
+    //Forward_Q_set=0.0f;
     //normalization,0.88f->eliminate SVPWM gain
     Vdd_forNormalization=U_middle_hope*0.5f;
     Forward_Dset_normalization=0.88f*Forward_D_set/Vdd_forNormalization;
@@ -384,7 +374,7 @@ void control_state_machine(void)
             }
             case 2:
             {
-                if((inputU_angle<0.505f*M_PI)&&(inputU_angle>0.495f*M_PI))
+                if((inputU_angle<0.5005f*M_PI)&&(inputU_angle>0.4995f*M_PI))
                 {
                     EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_A, EPWM_AQ_SW_DISABLED);
                     EPWM_setActionQualifierContSWForceAction(myEPWM1_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
@@ -406,6 +396,7 @@ void control_state_machine(void)
                     EPWM_setActionQualifierContSWForceAction(myEPWM10_BASE, EPWM_AQ_OUTPUT_B, EPWM_AQ_SW_DISABLED);
                     control_mode=3;
                     Grid_Current_PID_Mode=1;
+                    count_c=0;
                 }
                 break;
             }
