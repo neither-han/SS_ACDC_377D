@@ -62,6 +62,8 @@
 //
 extern float inputU_SinCos[4],inputU_angle;
 extern uint16_t  Grid_Current_PID_Mode,control_mode;
+extern float IsolatedSide_phase_0;
+extern float Uin_d,U_output_hope,U_middle_hope;
 //
 // Main
 //
@@ -107,12 +109,13 @@ void main(void)
 	    while(1)
     {
         //control_state_machine();
-        GPIO_writePin(24,1);
+        IsolatedSide_phase_0=work_piont_meansure(Uin_d,U_output_hope,U_middle_hope);
+        /*GPIO_writePin(24,1);
         GPIO_writePin(25,0);
         DEVICE_DELAY_US(1000000);
         GPIO_writePin(24,0);
         GPIO_writePin(25,1);
-        DEVICE_DELAY_US(1000000);
+        DEVICE_DELAY_US(1000000);*/
     }
     //this is a test for pushing to github.
 }

@@ -34,12 +34,12 @@ uint16_t  Grid_Current_PID_Mode=0,IsolatedSide_PID_Mode=0,control_mode=0,LightLo
 //middle volage control loop
 float U_middle,U_middle_hope=63.0f;
 //isolated side control loop
-float IsolatedSide_phase=0;
-float U_output,U_output_hope=47.0f;
+float IsolatedSide_phase=0,IsolatedSide_phase_0=0;
+float U_output,U_output_hope=144.0f;
 uint16_t Phase_16bit;
 
 
-uint32_t bits_fortest;
+uint32_t bits_fortest=0;
 
 void User_IRQhander(void)
 {
@@ -320,9 +320,10 @@ uint32_t Epwm_base_IsolatedSide)
 }
 float work_piont_meansure(float U_in_pp,float U_out,float U_m)
 {
-    float a,b,k,z,mm,D;
-    b=2*U_out/U_in_pp;
-    a=U_out/U_m;
+    float a,b,k,z,mm,D,U_out_n;
+    U_out_n=1.5f*U_out;
+    b=2*U_out_n/U_in_pp;
+    a=U_out_n/U_m;
     k=a*a-1;
     z=a*b;
     mm=sqrtf(4*k*k+z*z);
@@ -420,15 +421,17 @@ void control_state_machine(void)
             case 6:
             {
                 LightLoad=1;//lightmode
+                
                 if(Iin_d_hope<-4)
                 {
-                    control_mode=7;
+                    bits_fortest=1;
+                   /* control_mode=7;
                     pid_OutputU_2_Data.Sv=0;
 	                pid_OutputU_2_Data.Pv=0;
                     pid_OutputU_2_Data.Ek_2=0;
                     pid_OutputU_2_Data.Ek_1=0;
                     pid_OutputU_2_Data.Ek=0;
-                    pid_OutputU_2_Data.OUT=Grid_Input_Power;
+                    pid_OutputU_2_Data.OUT=Grid_Input_Power;*/
                 }
                 break;
             }
