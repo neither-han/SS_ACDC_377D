@@ -26,6 +26,8 @@ float U,V,W;
 //epwm generate
 uint16_t U_16bit,V_16bit,W_16bit;
 int U_Current_num=0,V_Current_num=0,W_Current_num=0;
+//back side pwm generate
+uint16_t Backward_dutycycle_16bit=0;
 //variable scope
 volatile float buffer_d[3][30];
 int count_d=0,count_c=0,fla=0;
@@ -34,9 +36,8 @@ uint16_t  Grid_Current_PID_Mode=0,IsolatedSide_PID_Mode=0,control_mode=0,LightLo
 //middle volage control loop
 float U_middle,U_middle_hope=63.0f;
 //isolated side control loop
-float IsolatedSide_phase=0,IsolatedSide_phase_0=0;
+float IsolatedSide_phase=0,IsolatedSide_phase_0=0,phase_test=0;
 float U_output,U_output_hope=144.0f;
-uint16_t Phase_16bit;
 
 
 uint32_t bits_fortest=0;
@@ -107,28 +108,29 @@ void User_IRQhander(void)
     V_16bit=(uint16_t)((V+1.0f)*Epwm_count_Period*0.5f);
     W_16bit=(uint16_t)((W+1.0f)*Epwm_count_Period*0.5f);
     
-    //Phase generate,90degree->500
+    //Phase generate,[IsolatedSide_phase=0.25(90degree)]->[Phase_16bit=500]
+    IsolatedSide_phase=phase_test;
+    /*
     if(IsolatedSide_phase>=0){
         Phase_16bit=(uint16_t)(IsolatedSide_phase*Epwm_count_Period);
     }
     else {
         Phase_16bit=(uint16_t)((1.0f-IsolatedSide_phase)*Epwm_count_Period);//产生不了负移相
     }
+    */
     //EPWM set
-    User_Waveform_Generation(U_16bit,1000,Phase_16bit,Iin_A,&U_Current_num,myEPWM2_BASE,myEPWM1_BASE,myEPWM10_BASE);
-    User_Waveform_Generation(V_16bit,1000,Phase_16bit,Iin_B,&V_Current_num,myEPWM4_BASE,myEPWM3_BASE,myEPWM9_BASE);
-    User_Waveform_Generation(W_16bit,1000,Phase_16bit,Iin_C,&W_Current_num,myEPWM7_BASE,myEPWM6_BASE,myEPWM8_BASE);
+    User_Waveform_Generation(U_16bit,Backward_dutycycle_16bit,IsolatedSide_phase,Iin_A,&U_Current_num,myEPWM2_BASE,myEPWM1_BASE,myEPWM10_BASE);
+    User_Waveform_Generation(V_16bit,Backward_dutycycle_16bit,IsolatedSide_phase,Iin_B,&V_Current_num,myEPWM4_BASE,myEPWM3_BASE,myEPWM9_BASE);
+    User_Waveform_Generation(W_16bit,Backward_dutycycle_16bit,IsolatedSide_phase,Iin_C,&W_Current_num,myEPWM7_BASE,myEPWM6_BASE,myEPWM8_BASE);
     EPWM_setGlobalLoadOneShotLatch(myEPWM1_BASE);
     control_state_machine();
 //GPIO_writePin(36,0);
-if(U_middle>170)
-count_c=0;
     if(count_c<30)
     {
         count_d++;
         if(count_d>=20)
         { 
-            buffer_d[0][count_c]=U_middle;
+            buffer_d[0][count_c]=PID_Forward_Dout;
             buffer_d[1][count_c]=Iin_d_hope;
             buffer_d[2][count_c]=Iin_d;
             count_d=0;
@@ -155,6 +157,7 @@ void I_pid(void)//78Khz
     //Forward_D_set=20.0f;
     //Forward_Q_set=0.0f;
     //normalization,0.88f->eliminate SVPWM gain
+    //Vdd_forNormalization=U_middle*0.5f;
     Vdd_forNormalization=U_middle_hope*0.5f;
     Forward_Dset_normalization=0.88f*Forward_D_set/Vdd_forNormalization;
     Forward_Qset_normalization=0.88f*Forward_Q_set/Vdd_forNormalization;
@@ -182,17 +185,18 @@ Epwm_base_00ang01
           ^^
           ||
           a b
-a->Forward
-b->Backward
+a->Forward,grid_side
+b->Backward,isolated_side
 后级持续低电平：Backward_dutycycle=0
 后级持续高电平：Backward_dutycycle>Epwm_count_Period
 
 前级持续高电平：Forward_dutycycle=0；
 前级持续高电平：Forward_dutycycle=Epwm_count_Period
 */
-void User_Waveform_Generation(uint16_t Forward_dutycycle,
-uint16_t Backward_dutycycle,
-uint16_t IsolatedSide_phase,
+void User_Waveform_Generation
+(uint16_t Forward_dutycycle,//1~Epwm_count_Period-1
+uint16_t Backward_dutycycle,//1~Epwm_count_Period-1
+float IsolatedSide_phase,//-0.5~0.5=>-180degree~180degree
 float Current_direction,
 int* current_num,
 uint32_t Epwm_base_01and11,
@@ -201,7 +205,7 @@ uint32_t Epwm_base_IsolatedSide)
 {
     uint16_t epwm_mode;
     uint16_t ComValue_A_01and11,ComValue_B_01and11,ComValue_A_00and10,ComValue_B_00and10;
-    uint16_t ComValue_A_IsolatedSide,ComValue_B_IsolatedSide;
+    float ComValue_A_IsolatedSide,ComValue_B_IsolatedSide;
     uint16_t ComValue_C_ADCTriger;
     //dead time
     if((*current_num)<0)
@@ -231,11 +235,21 @@ uint32_t Epwm_base_IsolatedSide)
         }
     }
     //隔离侧，后级，移相角设置
+    //ComValue_A_IsolatedSide=(IsolatedSide_phase-0.5f*0.5f)*Epwm_count_Period+0.5f*Backward_dutycycle;
+    ComValue_A_IsolatedSide=(IsolatedSide_phase-0.25f)*Epwm_count_Period+0.5f*Backward_dutycycle;
+    if(ComValue_A_IsolatedSide<0.0f){
+        ComValue_A_IsolatedSide+=Epwm_count_Period;
+    }
+    ComValue_B_IsolatedSide=Epwm_count_Period/2+ComValue_A_IsolatedSide;
+    if (ComValue_B_IsolatedSide>Epwm_count_Period) {
+        ComValue_B_IsolatedSide-=Epwm_count_Period;
+    }
+    /*
     ComValue_A_IsolatedSide=IsolatedSide_phase;
     ComValue_B_IsolatedSide=Epwm_count_Period/2+IsolatedSide_phase;
     if (ComValue_B_IsolatedSide>Epwm_count_Period) {
         ComValue_B_IsolatedSide-=Epwm_count_Period;
-    }
+    }*/
     //负电流，电流自电网流向电感
     //forword的下降沿与backword的下降沿对齐
     if(epwm_mode==0){
@@ -313,8 +327,16 @@ uint32_t Epwm_base_IsolatedSide)
     EPWM_setCounterCompareValue(Epwm_base_01and11, EPWM_COUNTER_COMPARE_A, ComValue_A_01and11);
     EPWM_setCounterCompareValue(Epwm_base_01and11, EPWM_COUNTER_COMPARE_B, ComValue_B_01and11);
     //set Isolated Side phase
-    EPWM_setCounterCompareValue(Epwm_base_IsolatedSide, EPWM_COUNTER_COMPARE_A, ComValue_A_IsolatedSide);
-    EPWM_setCounterCompareValue(Epwm_base_IsolatedSide, EPWM_COUNTER_COMPARE_B, ComValue_B_IsolatedSide);
+    if(ComValue_A_IsolatedSide>ComValue_B_IsolatedSide){
+        EPWM_setActionQualifierAction(Epwm_base_IsolatedSide, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);
+        EPWM_setActionQualifierAction(Epwm_base_IsolatedSide, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);
+    }
+    else {
+        EPWM_setActionQualifierAction(Epwm_base_IsolatedSide, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);
+        EPWM_setActionQualifierAction(Epwm_base_IsolatedSide, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);
+    }
+    EPWM_setCounterCompareValue(Epwm_base_IsolatedSide, EPWM_COUNTER_COMPARE_A, (uint16_t)ComValue_A_IsolatedSide);
+    EPWM_setCounterCompareValue(Epwm_base_IsolatedSide, EPWM_COUNTER_COMPARE_B, (uint16_t)ComValue_B_IsolatedSide);
     //set adc triger
     EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_C, ComValue_C_ADCTriger);
 }
@@ -366,6 +388,7 @@ void control_state_machine(void)
                 Grid_Current_PID_Mode=0;
                 IsolatedSide_PID_Mode=0;
                 LightLoad=1;
+                Backward_dutycycle_16bit=0;
                 break;
             }
             case 1:
@@ -403,13 +426,31 @@ void control_state_machine(void)
             }
             case 3:
             {
-                
+                /*phase_test+=0.01f;
+                if(phase_test>0.5)
+                {
+                    phase_test-=1.0f;
+                }
+                */
+                static int soft_start_count=0;
+                if(soft_start_count<2000){//3
+                    soft_start_count++;
+                    Backward_dutycycle_16bit=0;
+                }
+                else {
+                    soft_start_count++;
+                    Backward_dutycycle_16bit=(uint16_t)(100+(soft_start_count-2000)/20);
+                    if(Backward_dutycycle_16bit>=1000){
+                        Backward_dutycycle_16bit=1000;//Epwm_count_Period/2
+                        soft_start_count=0;
+                        control_mode=4;
+                    }
+                }
                 break;
             }
             case 4:
             {
-                if(ADC_calibration_function(ADC_DATA,&ADC_parameter_1))
-                control_mode=0;
+                
                 break;
             }
             case 5:
@@ -459,6 +500,8 @@ void control_state_machine(void)
             }
             default:
             {
+                if(ADC_calibration_function(ADC_DATA,&ADC_parameter_1))
+                control_mode=0;
                 break;
             }
         

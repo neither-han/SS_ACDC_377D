@@ -97,7 +97,7 @@ void main(void)
     init_PID_Parameter();
     init_PID_Data();
     //ADC_calibration
-    control_mode=4;
+    control_mode=100;
     //delay for hardware
     DEVICE_DELAY_US(10000);
 
@@ -109,6 +109,15 @@ void main(void)
 	    while(1)
     {
         //control_state_machine();
+        if(GPIO_readPin(50)==0){
+            DEVICE_DELAY_US(1000);
+            if(GPIO_readPin(50)==0){
+                control_mode=0;
+                while (GPIO_readPin(50)==0) {
+                
+                }
+            }
+        }
         IsolatedSide_phase_0=work_piont_meansure(Uin_d,U_output_hope,U_middle_hope);
         /*GPIO_writePin(24,1);
         GPIO_writePin(25,0);

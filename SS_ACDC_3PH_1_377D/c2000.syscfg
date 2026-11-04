@@ -34,6 +34,7 @@ const gpio2          = gpio.addInstance();
 const gpio3          = gpio.addInstance();
 const gpio4          = gpio.addInstance();
 const gpio5          = gpio.addInstance();
+const gpio6          = gpio.addInstance();
 const sysctl         = scripting.addModule("/driverlib/sysctl.js");
 const FPUfastRTS     = scripting.addModule("/libraries/math/FPUfastRTS/FPUfastRTS.js", {}, false);
 const FPUfastRTS1    = FPUfastRTS.addInstance();
@@ -461,6 +462,10 @@ gpio4.gpioPin.$assign = "GPIO25";
 gpio5.direction       = "GPIO_DIR_MODE_OUT";
 gpio5.$name           = "Epwm_EN_2";
 gpio5.gpioPin.$assign = "GPIO89";
+
+gpio6.$name           = "myGPIO_KEY";
+gpio6.padConfig       = "PULLUP";
+gpio6.gpioPin.$assign = "GPIO50";
 
 sysctl.splitCode = true;
 
