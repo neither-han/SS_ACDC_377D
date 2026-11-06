@@ -37,7 +37,7 @@ uint16_t  Grid_Current_PID_Mode=0,IsolatedSide_PID_Mode=0,control_mode=0,LightLo
 float U_middle,U_middle_hope=63.0f;
 //isolated side control loop
 float IsolatedSide_phase=0,IsolatedSide_phase_0=0,phase_test=0;
-float U_output,U_output_hope=144.0f;
+float U_output,U_output_hope=290.0f;
 
 
 uint32_t bits_fortest=0;
@@ -109,7 +109,7 @@ void User_IRQhander(void)
     W_16bit=(uint16_t)((W+1.0f)*Epwm_count_Period*0.5f);
     
     //Phase generate,[IsolatedSide_phase=0.25(90degree)]->[Phase_16bit=500]
-    IsolatedSide_phase=phase_test;
+    //IsolatedSide_phase=phase_test;
     /*
     if(IsolatedSide_phase>=0){
         Phase_16bit=(uint16_t)(IsolatedSide_phase*Epwm_count_Period);
@@ -252,6 +252,7 @@ uint32_t Epwm_base_IsolatedSide)
     }*/
     //负电流，电流自电网流向电感
     //forword的下降沿与backword的下降沿对齐
+
     if(epwm_mode==0){
         if(Forward_dutycycle>Backward_dutycycle){
             if(Forward_dutycycle<Backward_dutycycle+Epwm_count_DEADtime*2){
@@ -432,7 +433,7 @@ void control_state_machine(void)
                     phase_test-=1.0f;
                 }
                 */
-                static int soft_start_count=0;
+                static int32_t soft_start_count=0;
                 if(soft_start_count<2000){//3
                     soft_start_count++;
                     Backward_dutycycle_16bit=0;
