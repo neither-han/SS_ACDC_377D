@@ -44,7 +44,7 @@ uint32_t bits_fortest=0;
 
 void User_IRQhander(void)
 {
-    //GPIO_writePin(36,1);
+    GPIO_writePin(36,1);
     //ADC get
     ADC_DATA[0] = ADC_readResult(myADC0_RESULT_BASE,myADC0_SOC2);//A2
     ADC_DATA[1] = ADC_readResult(myADC0_RESULT_BASE,myADC0_SOC3);//A3
@@ -124,7 +124,7 @@ void User_IRQhander(void)
     User_Waveform_Generation(W_16bit,Backward_dutycycle_16bit,IsolatedSide_phase,Iin_C,&W_Current_num,myEPWM7_BASE,myEPWM6_BASE,myEPWM8_BASE);
     EPWM_setGlobalLoadOneShotLatch(myEPWM1_BASE);
     control_state_machine();
-//GPIO_writePin(36,0);
+GPIO_writePin(36,0);
     if(count_c<30)
     {
         count_d++;
@@ -250,80 +250,108 @@ uint32_t Epwm_base_IsolatedSide)
     if (ComValue_B_IsolatedSide>Epwm_count_Period) {
         ComValue_B_IsolatedSide-=Epwm_count_Period;
     }*/
-    //负电流，电流自电网流向电感
-    //forword的下降沿与backword的下降沿对齐
+    
+    switch (epwm_mode) 
+    {
+        case 0://负电流，电流自电网流向电感//forword的下降沿与backword的下降沿对齐
+        {
+            if(Forward_dutycycle>Backward_dutycycle){
+                if(Forward_dutycycle<Backward_dutycycle+Epwm_count_DEADtime*2){
+                    Forward_dutycycle=Backward_dutycycle+Epwm_count_DEADtime*2;
+                }
+                ComValue_A_01and11=0;
+                ComValue_B_01and11=Backward_dutycycle;
+                ComValue_A_00and10=Backward_dutycycle;
+                ComValue_B_00and10=Backward_dutycycle+(Epwm_count_Period-Forward_dutycycle);
+                //count adc triger
+                ComValue_C_ADCTriger=(ComValue_A_00and10+ComValue_B_00and10)/2;
+            }
+            else {
+                if(Forward_dutycycle>Backward_dutycycle-Epwm_count_DEADtime*2){
+                    Forward_dutycycle=Backward_dutycycle-Epwm_count_DEADtime*2;
+                }
+                ComValue_A_01and11=Backward_dutycycle-Forward_dutycycle;
+                ComValue_B_01and11=Backward_dutycycle;
+                ComValue_A_00and10=Backward_dutycycle;
+                ComValue_B_00and10=Epwm_count_Free;
+                //count adc triger
+                ComValue_C_ADCTriger=(ComValue_B_01and11+ComValue_A_01and11)/2;
+            }
+            //output set
+            //Epwm_base_00and10 OUTPUT_A ——>10
+            EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPB);
+            EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_A, ComValue_B_00and10);
+            //Epwm_base_00and10 OUTPUT_B ——>00
+            EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
+            EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_B, ComValue_A_00and10);
+            //Epwm_base_01and11 OUTPUT_A ——>11
+            EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+            EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
+            //Epwm_base_01and11 OUTPUT_B ——>01
+            EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+            EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
+            break;
+        }
+        case 1://正电流，电流自电感流向电网//forword的上升沿与backword的下降沿对齐
+        {
+            if(Forward_dutycycle+Backward_dutycycle>Epwm_count_Period){
+                if(Forward_dutycycle+Backward_dutycycle<Epwm_count_Period+Epwm_count_DEADtime*2){
+                    Forward_dutycycle=Epwm_count_Period-Backward_dutycycle+Epwm_count_DEADtime*2;
+                }        
+                ComValue_A_01and11=Backward_dutycycle-(Epwm_count_Period-Forward_dutycycle);
+                ComValue_B_01and11=Backward_dutycycle;
+                ComValue_A_00and10=Backward_dutycycle;
+                ComValue_B_00and10=Epwm_count_Free;
+                //count adc triger
+                ComValue_C_ADCTriger=(ComValue_B_01and11+ComValue_B_01and11)/2;
+            }
+            else{
+                if(Forward_dutycycle>Epwm_count_Period-Backward_dutycycle-Epwm_count_DEADtime*2){
+                    Forward_dutycycle=Epwm_count_Period-Backward_dutycycle-Epwm_count_DEADtime*2;
+                }
+                ComValue_A_01and11=0;
+                ComValue_B_01and11=Backward_dutycycle;
+                ComValue_A_00and10=Backward_dutycycle;
+                ComValue_B_00and10=Forward_dutycycle+Backward_dutycycle;
+                //count adc triger
+                ComValue_C_ADCTriger=(ComValue_A_00and10+ComValue_B_00and10)/2;
+            }
+            //output set
+            //Epwm_base_00and10 OUTPUT_A ——>10
+            EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPB);
+            EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_A, ComValue_A_00and10);
+            //Epwm_base_00and10 OUTPUT_B ——>00
+            EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
+            EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_B, ComValue_B_00and10);
+            //Epwm_base_01and11 OUTPUT_A ——>11
+            EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+            EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
+            //Epwm_base_01and11 OUTPUT_B ——>01
+            EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+            EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
+            break;
+        }
+        default:
+        {
+            ComValue_A_01and11=Backward_dutycycle;
+            ComValue_B_01and11=Backward_dutycycle;
+            ComValue_A_00and10=Backward_dutycycle;
+            ComValue_B_00and10=Backward_dutycycle;
+            //Epwm_base_00and10 OUTPUT_A ——>10
+            EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_NO_CHANGE, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPB);
+            EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_A, ComValue_A_00and10);
+            //Epwm_base_00and10 OUTPUT_B ——>00
+            EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_NO_CHANGE, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
+            EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_B, ComValue_B_00and10);
+            //Epwm_base_01and11 OUTPUT_A ——>11
+            EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+            EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_NO_CHANGE, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
+            //Epwm_base_01and11 OUTPUT_B ——>01
+            EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+            EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_NO_CHANGE, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
+            break;
+        }
 
-    if(epwm_mode==0){
-        if(Forward_dutycycle>Backward_dutycycle){
-            if(Forward_dutycycle<Backward_dutycycle+Epwm_count_DEADtime*2){
-                Forward_dutycycle=Backward_dutycycle+Epwm_count_DEADtime*2;
-            }
-            ComValue_A_01and11=0;
-            ComValue_B_01and11=Backward_dutycycle;
-            ComValue_A_00and10=Backward_dutycycle;
-            ComValue_B_00and10=Backward_dutycycle+(Epwm_count_Period-Forward_dutycycle);
-            //count adc triger
-            ComValue_C_ADCTriger=(ComValue_A_00and10+ComValue_B_00and10)/2;
-        }
-        else {
-            if(Forward_dutycycle>Backward_dutycycle-Epwm_count_DEADtime*2){
-                Forward_dutycycle=Backward_dutycycle-Epwm_count_DEADtime*2;
-            }
-            ComValue_A_01and11=Backward_dutycycle-Forward_dutycycle;
-            ComValue_B_01and11=Backward_dutycycle;
-            ComValue_A_00and10=Backward_dutycycle;
-            ComValue_B_00and10=Epwm_count_Free;
-            //count adc triger
-            ComValue_C_ADCTriger=(ComValue_B_01and11+ComValue_A_01and11)/2;
-        }
-        //output set
-        //Epwm_base_00and10 OUTPUT_A ——>10
-        EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_A, ComValue_B_00and10);
-        //Epwm_base_00and10 OUTPUT_B ——>00
-        EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_B, ComValue_A_00and10);
-        //Epwm_base_01and11 OUTPUT_A ——>11
-        EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
-        EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
-        //Epwm_base_01and11 OUTPUT_B ——>01
-        EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
-        EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
-    }
-//正电流，电流自电感流向电网
-//forword的上升沿与backword的下降沿对齐
-    else {
-        if(Forward_dutycycle+Backward_dutycycle>Epwm_count_Period){
-            if(Forward_dutycycle+Backward_dutycycle<Epwm_count_Period+Epwm_count_DEADtime*2){
-                Forward_dutycycle=Epwm_count_Period-Backward_dutycycle+Epwm_count_DEADtime*2;
-            }        
-            ComValue_A_01and11=Backward_dutycycle-(Epwm_count_Period-Forward_dutycycle);
-            ComValue_B_01and11=Backward_dutycycle;
-            ComValue_A_00and10=Backward_dutycycle;
-            ComValue_B_00and10=Epwm_count_Free;
-            //count adc triger
-            ComValue_C_ADCTriger=(ComValue_B_01and11+ComValue_B_01and11)/2;
-        }
-        else{
-            if(Forward_dutycycle>Epwm_count_Period-Backward_dutycycle-Epwm_count_DEADtime*2){
-                Forward_dutycycle=Epwm_count_Period-Backward_dutycycle-Epwm_count_DEADtime*2;
-            }
-            ComValue_A_01and11=0;
-            ComValue_B_01and11=Backward_dutycycle;
-            ComValue_A_00and10=Backward_dutycycle;
-            ComValue_B_00and10=Forward_dutycycle+Backward_dutycycle;
-            //count adc triger
-            ComValue_C_ADCTriger=(ComValue_A_00and10+ComValue_B_00and10)/2;
-        }
-        //output set
-        //Epwm_base_00and10 OUTPUT_A ——>10
-        EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_A, ComValue_A_00and10);
-        //Epwm_base_00and10 OUTPUT_B ——>00
-        EPWM_setCounterCompareValue(Epwm_base_00and10, EPWM_COUNTER_COMPARE_B, ComValue_B_00and10);
-        //Epwm_base_01and11 OUTPUT_A ——>11
-        EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
-        EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
-        //Epwm_base_01and11 OUTPUT_B ——>01
-        EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
-        EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
     }
     EPWM_setCounterCompareValue(Epwm_base_01and11, EPWM_COUNTER_COMPARE_A, ComValue_A_01and11);
     EPWM_setCounterCompareValue(Epwm_base_01and11, EPWM_COUNTER_COMPARE_B, ComValue_B_01and11);
