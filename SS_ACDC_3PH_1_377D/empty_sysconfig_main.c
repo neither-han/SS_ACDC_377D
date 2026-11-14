@@ -97,6 +97,7 @@ void main(void)
     init_PID_Parameter();
     init_PID_Data();
     //ADC_calibration
+    DEVICE_DELAY_US(10000);
     control_mode=100;
     //delay for hardware
     DEVICE_DELAY_US(10000);

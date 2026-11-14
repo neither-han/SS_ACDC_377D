@@ -27,11 +27,14 @@ typedef struct
 
 void User_IRQhander(void);
 
-void User_Waveform_Generation(uint16_t Forward_dutycycle,
-uint16_t Backward_dutycycle,
-float IsolatedSide_phase,
+void User_Waveform_Generation
+(uint16_t Forward_dutycycle,//1~Epwm_count_Period-1
+uint16_t Backward_dutycycle,//1~Epwm_count_Period-1
+float IsolatedSide_phase,//-0.5~0.5=>-180degree~180degree
 float Current_direction,
-int* current_num,
+uint16_t* current_num,
+uint16_t* epwm_mode,
+uint16_t start_set,//0-not act 1-start
 uint32_t Epwm_base_01and11,
 uint32_t Epwm_base_00and10,
 uint32_t Epwm_base_IsolatedSide);
