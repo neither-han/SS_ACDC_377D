@@ -68,14 +68,14 @@ void init_PID_Data(void)//pid���ݳ�ʼ��
 	pid_InputId_Data.Ek_2=0;
 	pid_InputId_Data.Ek_1=0;
 	pid_InputId_Data.Ek=0;
-  pid_InputId_Data.OUT=0.015707;//
+  pid_InputId_Data.OUT=0;//
   
   pid_InputIq_Data.Sv=0;
 	pid_InputIq_Data.Pv=0;
 	pid_InputIq_Data.Ek_2=0;
 	pid_InputIq_Data.Ek_1=0;
 	pid_InputIq_Data.Ek=0;
-  pid_InputIq_Data.OUT=0.015707;//
+  pid_InputIq_Data.OUT=0;//
   
   pid_UinPLL_Data.Sv=0;
 	pid_UinPLL_Data.Pv=0;
@@ -107,6 +107,65 @@ void init_PID_Data(void)//pid���ݳ�ʼ��
 }
 
 void init_PID_Parameter(void)//pid������ʼ��
+{
+  pid_InputI_Parameter.Kp_P=1.5f;
+  pid_InputI_Parameter.Kp_I=0.024f;
+	pid_InputI_Parameter.Kp_D=0;
+	pid_InputI_Parameter.T=1;//s
+	pid_InputI_Parameter.Td=0;
+	pid_InputI_Parameter.Ti=0;
+  pid_InputI_Parameter.ADD_LIMIT_DOWN=-5.0f;
+  pid_InputI_Parameter.ADD_LIMIT_UP=5.0f;
+  pid_InputI_Parameter.OUTPUT_LIMIT_DOWN=-200.0F;
+  pid_InputI_Parameter.OUTPUT_LIMIT_UP=200.0F;
+  
+  pid_UinPLL_Parameter.Kp_P=-0.02f;
+	pid_UinPLL_Parameter.Kp_I=-0.00019f;
+	pid_UinPLL_Parameter.Kp_D=0;
+	pid_UinPLL_Parameter.T=1.0f;//s
+	pid_UinPLL_Parameter.Td=0;
+	pid_UinPLL_Parameter.Ti=0;
+  pid_UinPLL_Parameter.ADD_LIMIT_DOWN=-0.01f;
+  pid_UinPLL_Parameter.ADD_LIMIT_UP=0.01f;
+  pid_UinPLL_Parameter.OUTPUT_LIMIT_DOWN=2.0f*M_PI*40.0f/25000.0f;//40hz//0.015707-<50hz
+  pid_UinPLL_Parameter.OUTPUT_LIMIT_UP=2.0f*M_PI*60.0f/25000.0f;//60hz
+
+  pid_MiddleU_Parameter.Kp_P=-24.0f;
+  pid_MiddleU_Parameter.Kp_I=-0.0308f;
+	pid_MiddleU_Parameter.Kp_D=0;
+	pid_MiddleU_Parameter.T=1;//s
+	pid_MiddleU_Parameter.Td=0;
+	pid_MiddleU_Parameter.Ti=0;
+  pid_MiddleU_Parameter.ADD_LIMIT_DOWN=-50.0f;
+  pid_MiddleU_Parameter.ADD_LIMIT_UP=50.0f;
+  pid_MiddleU_Parameter.OUTPUT_LIMIT_DOWN=-12000.0F;
+  pid_MiddleU_Parameter.OUTPUT_LIMIT_UP=6000.0F;
+
+  pid_OutputU_1_Parameter.Kp_P=0.0065f;
+  pid_OutputU_1_Parameter.Kp_I=0.00000523f;
+	pid_OutputU_1_Parameter.Kp_D=0;
+	pid_OutputU_1_Parameter.T=1;//s
+	pid_OutputU_1_Parameter.Td=0;
+	pid_OutputU_1_Parameter.Ti=0;
+  pid_OutputU_1_Parameter.ADD_LIMIT_DOWN=-0.01f;
+  pid_OutputU_1_Parameter.ADD_LIMIT_UP=0.01f;
+  pid_OutputU_1_Parameter.OUTPUT_LIMIT_DOWN=-0.25f;
+  pid_OutputU_1_Parameter.OUTPUT_LIMIT_UP=0.25f;
+
+  pid_OutputU_2_Parameter.Kp_P=0.0002f;
+  pid_OutputU_2_Parameter.Kp_I=0.000001f;
+	pid_OutputU_2_Parameter.Kp_D=0;
+	pid_OutputU_2_Parameter.T=1;//s
+	pid_OutputU_2_Parameter.Td=0;
+	pid_OutputU_2_Parameter.Ti=0;
+  pid_OutputU_2_Parameter.ADD_LIMIT_DOWN=-0.1f;
+  pid_OutputU_2_Parameter.ADD_LIMIT_UP=0.1f;
+  pid_OutputU_2_Parameter.OUTPUT_LIMIT_DOWN=-5000.0F;
+  pid_OutputU_2_Parameter.OUTPUT_LIMIT_UP=300.0F;
+}
+
+
+/*oid init_PID_Parameter(void)//pid������ʼ��
 {
   pid_InputI_Parameter.Kp_P=1.1f;
   pid_InputI_Parameter.Kp_I=0.0040000009f;
@@ -163,3 +222,4 @@ void init_PID_Parameter(void)//pid������ʼ��
   pid_OutputU_2_Parameter.OUTPUT_LIMIT_DOWN=-5000.0F;
   pid_OutputU_2_Parameter.OUTPUT_LIMIT_UP=300.0F;
 }
+*/

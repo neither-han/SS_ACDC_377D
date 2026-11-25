@@ -57,6 +57,7 @@
 // User Included Files
 //
 #include "control.h"
+#include "digital_filter.h"
 //
 // User variable and extern
 //
@@ -93,6 +94,10 @@ void main(void)
     Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP3);
 
     //user_init
+
+    LPF1kHz_Init();
+    LPF10Hz_Init();
+
     ADC_calibration_init();
     init_PID_Parameter();
     init_PID_Data();

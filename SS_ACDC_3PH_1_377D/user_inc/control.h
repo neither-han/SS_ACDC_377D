@@ -8,8 +8,10 @@
 #include "Pll.h"
 #include "pid.h"
 #include "Park.h"
+#include "digital_filter.h"
+#include "filter_example.h"
 
-#define Epwm_count_DEADtime 10
+#define Epwm_count_DEADtime 40
 #define Epwm_count_Period   2000
 #define Epwm_count_Free     2100
 
@@ -29,6 +31,7 @@ void User_IRQhander(void);
 
 void User_Waveform_Generation
 (uint16_t Forward_dutycycle,//1~Epwm_count_Period-1
+float Forward_dutycycle_f,
 uint16_t Backward_dutycycle,//1~Epwm_count_Period-1
 float IsolatedSide_phase,//-0.5~0.5=>-180degree~180degree
 float Current_direction,

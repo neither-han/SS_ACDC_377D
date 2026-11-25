@@ -31,14 +31,15 @@ uint16_t U_epwm_mode=1,V_epwm_mode=1,W_epwm_mode=1,start_mode=1;
 uint16_t Backward_dutycycle_16bit=0;
 //variable scope
 volatile float buffer_d[3][30];
-int count_d=0,count_c=0,fla=0;
+int count_d=0,count_c=0;
+float fla=0;
 //work mode
 uint16_t  Grid_Current_PID_Mode=0,IsolatedSide_PID_Mode=0,control_mode=0,LightLoad=1;
 //middle volage control loop
-float U_middle,U_middle_hope=63.0f;
+float U_middle,U_middle_fliter,U_middle_hope=63.0f;
 //isolated side control loop
 float IsolatedSide_phase=0,IsolatedSide_phase_0=0,phase_test=0;
-float U_output,U_output_hope=165.0f;
+float U_output,U_output_filter,U_output_hope=163.0f;
 
 
 uint32_t bits_fortest=0;
@@ -68,6 +69,10 @@ void User_IRQhander(void)
     Uin_A=(Uin_AB-Uin_CA)*0.3333333f;
     Uin_B=(Uin_BC-Uin_AB)*0.3333333f;
     Uin_C=(Uin_CA-Uin_BC)*0.3333333f;
+
+    U_output_filter=LPF1kHz_Process(fla);
+    U_middle_fliter=LPF10Hz_Process(fla);
+
     //更新SIN和COS
     Sin_Cos_Update();
     //park
@@ -109,34 +114,38 @@ void User_IRQhander(void)
     F_parkTest_TOW(&U,&V,&W,inputU_SinCos,Forward_Dset_normalization,Forward_Qset_normalization);
     //SVPWM generate
     SPWM_to_SVPWM(&U,&V,&W);
-    U_16bit=(uint16_t)((U+1.0f)*Epwm_count_Period*0.5f);
-    V_16bit=(uint16_t)((V+1.0f)*Epwm_count_Period*0.5f);
-    W_16bit=(uint16_t)((W+1.0f)*Epwm_count_Period*0.5f);
+    U_16bit=(uint16_t)((U+0.5f)*Epwm_count_Period);
+    V_16bit=(uint16_t)((V+0.5f)*Epwm_count_Period);
+    W_16bit=(uint16_t)((W+0.5f)*Epwm_count_Period);
     //Phase generate,[IsolatedSide_phase=0.25(90degree)]->[Phase_16bit=500]
 
     //IsolatedSide_phase=phase_test;
 
     //EPWM set
-    User_Waveform_Generation(U_16bit,Backward_dutycycle_16bit,IsolatedSide_phase,Iin_A,&U_Current_num,&U_epwm_mode,start_mode,myEPWM2_BASE,myEPWM1_BASE,myEPWM10_BASE);
-    User_Waveform_Generation(V_16bit,Backward_dutycycle_16bit,IsolatedSide_phase,Iin_B,&V_Current_num,&V_epwm_mode,start_mode,myEPWM4_BASE,myEPWM3_BASE,myEPWM9_BASE);
-    User_Waveform_Generation(W_16bit,Backward_dutycycle_16bit,IsolatedSide_phase,Iin_C,&W_Current_num,&W_epwm_mode,start_mode,myEPWM7_BASE,myEPWM6_BASE,myEPWM8_BASE);
+    User_Waveform_Generation(U_16bit,U,Backward_dutycycle_16bit,IsolatedSide_phase,Iin_A,&U_Current_num,&U_epwm_mode,start_mode,myEPWM2_BASE,myEPWM1_BASE,myEPWM10_BASE);
+    User_Waveform_Generation(V_16bit,V,Backward_dutycycle_16bit,IsolatedSide_phase,Iin_B,&V_Current_num,&V_epwm_mode,start_mode,myEPWM4_BASE,myEPWM3_BASE,myEPWM9_BASE);
+    User_Waveform_Generation(W_16bit,W,Backward_dutycycle_16bit,IsolatedSide_phase,Iin_C,&W_Current_num,&W_epwm_mode,start_mode,myEPWM7_BASE,myEPWM6_BASE,myEPWM8_BASE);
     EPWM_setGlobalLoadOneShotLatch(myEPWM1_BASE);
     control_state_machine();
     GPIO_writePin(36,0);
-/*
+
     if(count_c<30)
     {
+        fla=1;
         count_d++;
-        if(count_d>=20)
+        if(count_d>=50)
         { 
-            buffer_d[0][count_c]=PID_Forward_Dout;
-            buffer_d[1][count_c]=Iin_d_hope;
-            buffer_d[2][count_c]=Iin_d;
+            buffer_d[0][count_c]=fla;
+            buffer_d[1][count_c]=U_middle_fliter;
+            buffer_d[2][count_c]=U_output_filter;
             count_d=0;
             count_c++;
         }
     }
-*/
+    else {
+    fla=0;
+    }
+
 }
 void I_pid(void)//78Khz
 {
@@ -159,12 +168,12 @@ void I_pid(void)//78Khz
     //Forward_Q_set=0.0f;
     //normalization,0.88f->eliminate SVPWM gain
     //Vdd_forNormalization=U_middle*0.5f;
-    Vdd_forNormalization=U_middle_hope*0.5f;
-    Forward_Dset_normalization=0.88f*Forward_D_set/Vdd_forNormalization;
-    Forward_Qset_normalization=0.88f*Forward_Q_set/Vdd_forNormalization;
+    Vdd_forNormalization=U_middle_fliter;
+    Forward_Dset_normalization=Forward_D_set/Vdd_forNormalization;
+    Forward_Qset_normalization=Forward_Q_set/Vdd_forNormalization;
     //limit
-    Max_min(&Forward_Dset_normalization,0.97f);
-    Max_min(&Forward_Qset_normalization,0.97f);
+    Max_min(&Forward_Dset_normalization,0.49f);
+    Max_min(&Forward_Qset_normalization,0.49f);
 }
 
 void  Max_min(float *a,float b)
@@ -196,6 +205,7 @@ b->Backward,isolated_side
 */
 void User_Waveform_Generation
 (uint16_t Forward_dutycycle,//1~Epwm_count_Period-1
+float Forward_dutycycle_f,
 uint16_t Backward_dutycycle,//1~Epwm_count_Period-1
 float IsolatedSide_phase,//-0.5~0.5=>-180degree~180degree
 float Current_direction,
@@ -209,10 +219,14 @@ uint32_t Epwm_base_IsolatedSide)
     uint16_t ComValue_A_01and11,ComValue_B_01and11,ComValue_A_00and10,ComValue_B_00and10;
     float ComValue_A_IsolatedSide,ComValue_B_IsolatedSide;
     uint16_t ComValue_C_ADCTriger;
+    static uint16_t Current_trg=0;
     //dead time
     if((*current_num)<101){
         (*current_num)++;
     }
+
+    //Forward_dutycycle_f=(1.0f+Forward_dutycycle_f)*0.5f;
+
     switch ((*epwm_mode)) 
     {
         case 0://负电流，电流自电网流向电感//forword的下降沿与backword的下降沿对齐
@@ -231,26 +245,48 @@ uint32_t Epwm_base_IsolatedSide)
                 (*epwm_mode)=10;
                 (*current_num)=0;
             }
-            else if((Current_direction>0.0)&&((*current_num)>100)){
-                /*
-                EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPB);
-                EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
-                //Epwm_base_01and11 OUTPUT_A ——>11
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
-                //Epwm_base_01and11 OUTPUT_B ——>01
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
-                */
-                    
-                //Epwm_base_01and11 OUTPUT_A ——>11
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
-                //Epwm_base_01and11 OUTPUT_B ——>01
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
-                (*epwm_mode)=1;
-                (*current_num)=0;
+            else {
+                if((Current_direction>0.0)&&((*current_num)>100)&&(Current_trg)){
+                    /*
+                    EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPB);
+                    EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
+                    //Epwm_base_01and11 OUTPUT_A ——>11
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
+                    //Epwm_base_01and11 OUTPUT_B ——>01
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
+                    */
+                        
+                    //Epwm_base_01and11 OUTPUT_A ——>11
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
+                    //Epwm_base_01and11 OUTPUT_B ——>01
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
+                    (*epwm_mode)=1;
+                    (*current_num)=0;
+                    /*
+                    if(Forward_dutycycle_f<0.5f){//only can be used in Backward_dutycycle==0.5f.
+                        Forward_dutycycle=(uint16_t)((0.5f*Forward_dutycycle_f+1.0f)*Forward_dutycycle_f*Epwm_count_Period);
+                    }
+                    else {
+                        Forward_dutycycle=(uint16_t)((0.5f+Forward_dutycycle_f*Forward_dutycycle_f*0.5f)*Epwm_count_Period);
+                    }
+                    */
+                }
+                else {
+                    if(Current_trg){
+                        if((Iin_d>-0.4f)&&(Iin_d<0.4f)){
+                            Current_trg=0;
+                        }
+                    }
+                    else {
+                        if((Iin_d<-1.0f)||(Iin_d>1.0f)){
+                            Current_trg=1;
+                        }
+                    }
+                }
             }
             break;
         }
@@ -270,26 +306,48 @@ uint32_t Epwm_base_IsolatedSide)
                 (*epwm_mode)=10;
                 (*current_num)=0;
             }
-            else if((Current_direction<0.0f)&&((*current_num)>100)){
-                /*
-                EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPB);
-                EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
-                //Epwm_base_01and11 OUTPUT_A ——>11
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
-                //Epwm_base_01and11 OUTPUT_B ——>01
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
-                */
+            else {
+                if((Current_direction<0.0f)&&((*current_num)>100)&&(Current_trg)){
+                    /*
+                    EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPB);
+                    EPWM_setActionQualifierAction(Epwm_base_00and10, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
+                    //Epwm_base_01and11 OUTPUT_A ——>11
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
+                    //Epwm_base_01and11 OUTPUT_B ——>01
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
+                    */
 
-                //Epwm_base_01and11 OUTPUT_A ——>11
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
-                //Epwm_base_01and11 OUTPUT_B ——>01
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
-                EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
-                (*epwm_mode)=0;
-                (*current_num)=0;
+                    //Epwm_base_01and11 OUTPUT_A ——>11
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_A, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);	
+                    //Epwm_base_01and11 OUTPUT_B ——>01
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_HIGH, EPWM_AQ_OUTPUT_ON_TIMEBASE_ZERO);	
+                    EPWM_setActionQualifierAction(Epwm_base_01and11, EPWM_AQ_OUTPUT_B, EPWM_AQ_OUTPUT_LOW, EPWM_AQ_OUTPUT_ON_TIMEBASE_UP_CMPA);
+                    (*epwm_mode)=0;
+                    (*current_num)=0;
+                    /*
+                    if(Forward_dutycycle_f<0.5f){//only can be used in Backward_dutycycle==0.5f.
+                        Forward_dutycycle=(uint16_t)((1.0f-Forward_dutycycle_f*0.5f)*Forward_dutycycle_f*Epwm_count_Period);
+                    }
+                    else {
+                        Forward_dutycycle=(uint16_t)((0.5f*Forward_dutycycle_f*(4.0f-Forward_dutycycle_f)-0.5f)*Epwm_count_Period);
+                    }
+                    */
+                }
+                else {
+                    if(Current_trg){
+                        if((Iin_d>-0.4f)&&(Iin_d<0.4f)){
+                            Current_trg=0;
+                        }
+                    }
+                    else {
+                        if((Iin_d<-1.0f)||(Iin_d>1.0f)){
+                            Current_trg=1;
+                        }
+                    }
+                }
             }
             break;
         }
@@ -368,7 +426,7 @@ uint32_t Epwm_base_IsolatedSide)
             if(Forward_dutycycle+Backward_dutycycle>Epwm_count_Period){
                 if(Forward_dutycycle+Backward_dutycycle<Epwm_count_Period+Epwm_count_DEADtime*2){
                     Forward_dutycycle=Epwm_count_Period-Backward_dutycycle+Epwm_count_DEADtime*2;
-                }        
+                }
                 ComValue_A_01and11=Backward_dutycycle-(Epwm_count_Period-Forward_dutycycle);
                 ComValue_B_01and11=Backward_dutycycle;
                 ComValue_A_00and10=Backward_dutycycle;
@@ -552,7 +610,7 @@ void control_state_machine(void)
                 
                 if(IsolatedSide_phase<IsolatedSide_phase_0)
                 {
-                    bits_fortest=1;
+                    //bits_fortest=1;
                    /* control_mode=7;
                     pid_OutputU_2_Data.Sv=0;
 	                pid_OutputU_2_Data.Pv=0;
