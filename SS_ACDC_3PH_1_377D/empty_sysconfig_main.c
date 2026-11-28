@@ -150,7 +150,19 @@ __interrupt void INT_myEPWM1_ISR(void)
     Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP3);
 }
 
-
+__interrupt void INT_myEPWM1_TZ_ISR(void)
+{
+    //User_IRQhander();
+    // 结束中断函数
+    //
+    // Clear INT flag for this timer
+    //
+    //EPWM_clearEventTriggerInterruptFlag(myEPWM1_BASE);
+    //
+    // Acknowledge this interrupt to receive more interrupts from group 3
+    //
+    //Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP3);
+}
 //
 // End of File
 //
